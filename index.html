@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Türkiye Bulmacası</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --parchment:     #f5efe0;
+      --parchment-dark:#e8dcc8;
+      --ink:           #2c1f0e;
+      --ink-light:     #5a3e28;
+      --gold:          #b8860b;
+      --gold-light:    #d4a93a;
+      --gold-shine:    #f0c040;
+      --sea:           #a8c4d4;
+      --sea-dark:      #7ba3b8;
+      --land:          #d4c4a0;
+      --land-hover:    #c8e6c9;
+      --land-placed:   #4caf50;
+      --red:           #c0392b;
+      --shadow: 0 4px 20px rgba(44,31,14,0.25);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #1a1208;
+      background-image:
+        radial-gradient(ellipse at 20% 20%, rgba(184,134,11,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 80%, rgba(168,196,212,0.06) 0%, transparent 60%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      font-family: 'Crimson Pro', serif;
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      overflow-x: hidden;
+    }
+
+    header {
+      width: 100%;
+      max-width: 1260px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0 14px;
+      border-bottom: 1px solid rgba(184,134,11,0.3);
+      margin-bottom: 14px;
+    }
+
+    .header-title { display: flex; flex-direction: column; }
+
+    .title-main {
+      font-family: 'Cinzel', serif;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: var(--gold-light);
+      text-shadow: 0 0 30px rgba(212,169,58,0.4), 1px 1px 0 rgba(0,0,0,0.5);
+      line-height: 1;
+    }
+
+    .title-sub {
+      font-family: 'Crimson Pro', serif;
+      font-style: italic;
+      font-size: 13px;
+      color: rgba(212,169,58,0.6);
+      letter-spacing: 2px;
+      margin-top: 3px;
+    }
+
+    .header-ornament { font-size: 22px; color: var(--gold); opacity: 0.5; }
+
+    .hud { display: flex; gap: 12px; align-items: center; }
+
+    .hud-card {
+      background: linear-gradient(135deg, rgba(245,239,224,0.08), rgba(245,239,224,0.04));
+      border: 1px solid rgba(184,134,11,0.3);
+      border-radius: 8px;
+      padding: 6px 16px;
+      text-align: center;
+      min-width: 90px;
+    }
+
+    .hud-label {
+      font-family: 'Cinzel', serif;
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: rgba(212,169,58,0.6);
+      text-transform: uppercase;
+    }
+
+    .hud-value {
+      font-family: 'Cinzel', serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--gold-light);
+      line-height: 1.2;
+    }
+
+    #score-value { color: var(--gold-shine); }
+
+    .progress-wrap {
+      width: 100%;
+      max-width: 1260px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .progress-bg {
+      height: 6px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), var(--gold-shine));
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 0 8px rgba(212,169,58,0.6);
+    }
+
+    .progress-label {
+      position: absolute;
+      right: 0;
+      top: -18px;
+      font-family: 'Cinzel', serif;
+      font-size: 9px;
+      letter-spacing: 1px;
+      color: rgba(212,169,58,0.5);
+    }
+
+    .main-layout {
+      width: 100%;
+      max-width: 1260px;
+      display: flex;
+      gap: 14px;
+      flex: 1;
+    }
+
+    .sidebar {
+      width: 200px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .panel {
+      background: linear-gradient(160deg, rgba(245,239,224,0.07), rgba(232,220,200,0.04));
+      border: 1px solid rgba(184,134,11,0.25);
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .panel-title {
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      letter-spacing: 2.5px;
+      color: var(--gold);
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(184,134,11,0.2);
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+
+    .hint-counter { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+
+    .hint-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 6px rgba(184,134,11,0.5);
+      transition: all 0.3s;
+    }
+
+    .hint-dot.used { background: rgba(255,255,255,0.1); box-shadow: none; }
+
+    .hint-btn {
+      width: 100%;
+      padding: 9px;
+      border: 1px solid rgba(184,134,11,0.4);
+      border-radius: 7px;
+      background: linear-gradient(135deg, rgba(184,134,11,0.15), rgba(184,134,11,0.05));
+      color: var(--gold-light);
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+
+    .hint-btn:hover:not(:disabled) {
+      background: linear-gradient(135deg, rgba(184,134,11,0.3), rgba(184,134,11,0.12));
+      box-shadow: 0 0 16px rgba(184,134,11,0.3);
+      transform: translateY(-1px);
+    }
+
+    .hint-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .lb-entry {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(184,134,11,0.1);
+      font-size: 12px;
+    }
+
+    .lb-rank { font-family: 'Cinzel', serif; font-size: 10px; color: var(--gold); width: 16px; text-align: center; }
+    .lb-rank.gold   { color: #ffd700; }
+    .lb-rank.silver { color: #c0c0c0; }
+    .lb-rank.bronze { color: #cd7f32; }
+
+    .lb-name { flex: 1; color: rgba(245,239,224,0.75); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lb-time { font-family: 'Cinzel', serif; font-size: 10px; color: var(--gold-light); }
+
+    .lb-loading {
+      font-style: italic;
+      color: rgba(212,169,58,0.4);
+      font-size: 11px;
+      text-align: center;
+      padding: 8px 0;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+
+    .lb-empty { font-style: italic; color: rgba(245,239,224,0.3); font-size: 11px; text-align: center; padding: 8px 0; }
+
+    .map-wrapper {
+      flex: 1;
+      position: relative;
+      background: linear-gradient(160deg, rgba(168,196,212,0.08), rgba(120,160,180,0.04));
+      border: 1px solid rgba(184,134,11,0.2);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .map-wrapper::before, .map-wrapper::after {
+      content: '✦';
+      position: absolute;
+      font-size: 14px;
+      color: rgba(184,134,11,0.3);
+      z-index: 10;
+    }
+    .map-wrapper::before { top: 8px; left: 12px; }
+    .map-wrapper::after  { top: 8px; right: 12px; }
+
+    #map-container { width: 100%; height: 100%; }
+    #map-container svg { width: 100%; height: 100%; cursor: default; }
+
+    .action-row { display: flex; flex-direction: column; gap: 8px; }
+
+    .btn-primary {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 50%, var(--gold) 100%);
+      background-size: 200% auto;
+      color: var(--ink);
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      letter-spacing: 2px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 2px 12px rgba(184,134,11,0.3);
+    }
+
+    .btn-primary:hover {
+      background-position: right center;
+      box-shadow: 0 4px 20px rgba(184,134,11,0.5);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 9px;
+      border: 1px solid rgba(192,57,43,0.4);
+      border-radius: 8px;
+      background: transparent;
+      color: rgba(192,57,43,0.7);
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(192,57,43,0.1);
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10,8,4,0.88);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s;
+    }
+
+    .overlay.visible { opacity: 1; pointer-events: all; }
+
+    .overlay-card {
+      background: linear-gradient(160deg, #2a1e0e, #1a1208);
+      border: 1px solid rgba(184,134,11,0.4);
+      border-radius: 16px;
+      padding: 48px 52px;
+      text-align: center;
+      max-width: 480px;
+      width: 90%;
+      box-shadow: 0 0 80px rgba(184,134,11,0.15), 0 20px 60px rgba(0,0,0,0.6);
+      transform: scale(0.9);
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .overlay.visible .overlay-card { transform: scale(1); }
+
+    .overlay-icon { font-size: 52px; margin-bottom: 16px; display: block; }
+
+    .overlay-title {
+      font-family: 'Cinzel', serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--gold-light);
+      letter-spacing: 3px;
+      margin-bottom: 8px;
+    }
+
+    .overlay-msg {
+      font-family: 'Crimson Pro', serif;
+      font-style: italic;
+      font-size: 17px;
+      color: rgba(245,239,224,0.7);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    .overlay-stats { display: flex; gap: 24px; justify-content: center; margin-bottom: 32px; }
+
+    .stat-item { text-align: center; }
+
+    .stat-label {
+      font-family: 'Cinzel', serif;
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: rgba(212,169,58,0.5);
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-family: 'Cinzel', serif;
+      font-size: 22px;
+      color: var(--gold-shine);
+      font-weight: 600;
+    }
+
+    .name-input-wrap { margin-bottom: 20px; }
+
+    .name-input-wrap label {
+      display: block;
+      font-family: 'Cinzel', serif;
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: rgba(212,169,58,0.6);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .name-input {
+      width: 100%;
+      padding: 10px 14px;
+      background: rgba(245,239,224,0.05);
+      border: 1px solid rgba(184,134,11,0.35);
+      border-radius: 8px;
+      color: var(--parchment);
+      font-family: 'Crimson Pro', serif;
+      font-size: 15px;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .name-input:focus { border-color: var(--gold); box-shadow: 0 0 12px rgba(184,134,11,0.2); }
+
+    .overlay-btns { display: flex; gap: 12px; }
+
+    @keyframes hintPulse {
+      0%   { filter: drop-shadow(0 0 0px #ffd700) brightness(1); }
+      50%  { filter: drop-shadow(0 0 12px #ffd700) brightness(1.4); }
+      100% { filter: drop-shadow(0 0 0px #ffd700) brightness(1); }
+    }
+    .hint-target path { animation: hintPulse 0.7s ease-in-out 3; }
+
+    #tooltip {
+      position: fixed;
+      background: rgba(26,18,8,0.95);
+      border: 1px solid rgba(184,134,11,0.4);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      color: var(--gold-light);
+      letter-spacing: 1px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 500;
+    }
+
+    @keyframes snapRipple {
+      from { r: 0;   opacity: 0.8; }
+      to   { r: 40px; opacity: 0;   }
+    }
+    .snap-ripple { animation: snapRipple 0.5s ease-out forwards; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(184,134,11,0.3); border-radius: 2px; }
+
+    /* ══ MOBİL — dikey ══ */
+    @media (max-width: 700px) {
+      body { padding: 8px; }
+      header { padding: 6px 0 8px; margin-bottom: 8px; }
+      .title-main { font-size: 18px; letter-spacing: 1.5px; }
+      .title-sub  { font-size: 10px; }
+      .header-ornament { display: none; }
+      .hud-card { min-width: 68px; padding: 4px 10px; }
+      .hud-value { font-size: 15px; }
+      .hud-label { font-size: 8px; }
+      .progress-wrap { margin-bottom: 8px; }
+
+      .main-layout { flex-direction: column; gap: 8px; }
+
+      .map-wrapper {
+        width: 100%;
+        height: 55vw;
+        min-height: 210px;
+        max-height: 380px;
+        flex: none;
+      }
+
+      .sidebar {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .sidebar .panel:nth-child(1) { flex: 1; min-width: 140px; }
+      .sidebar .panel:nth-child(2) { flex: 1; min-width: 120px; }
+      .sidebar .panel:nth-child(3) { width: 100%; max-height: 140px; }
+
+      .action-row { flex-direction: row; gap: 6px; }
+      .btn-primary  { font-size: 9px; padding: 8px 4px; letter-spacing: 0.8px; }
+      .btn-secondary{ font-size: 9px; padding: 7px 4px; letter-spacing: 0.8px; }
+      .panel { padding: 10px; }
+      .panel-title { font-size: 9px; }
+      .hint-btn { font-size: 9px; padding: 7px 4px; }
+      .hint-dot { width: 8px; height: 8px; }
+
+      .overlay-card { padding: 28px 18px; }
+      .overlay-title { font-size: 18px; }
+      .overlay-msg { font-size: 14px; margin-bottom: 16px; }
+      .stat-value { font-size: 18px; }
+      .overlay-stats { margin-bottom: 18px; }
+    }
+
+    /* ══ MOBİL — yatay (landscape) ══ */
+    @media (max-height: 500px) and (orientation: landscape) {
+      body { padding: 4px 8px; }
+      header { padding: 3px 0 5px; margin-bottom: 4px; }
+      .title-main { font-size: 15px; }
+      .title-sub, .header-ornament { display: none; }
+      .hud-card { padding: 3px 8px; min-width: 60px; }
+      .hud-value { font-size: 13px; }
+      .progress-wrap { margin-bottom: 4px; }
+      .progress-bg { height: 4px; }
+
+      .main-layout { flex-direction: row; gap: 8px; height: calc(100vh - 52px); }
+
+      .map-wrapper {
+        flex: 1;
+        height: 100%;
+        max-height: none;
+        min-height: 0;
+      }
+
+      .sidebar {
+        width: 150px;
+        flex-shrink: 0;
+        flex-direction: column;
+        overflow-y: auto;
+        gap: 6px;
+      }
+
+      .sidebar .panel:nth-child(3) { flex: 1; min-height: 0; }
+      .panel { padding: 8px; }
+      .panel-title { font-size: 8px; padding-bottom: 5px; margin-bottom: 6px; }
+      .btn-primary  { font-size: 9px; padding: 7px; letter-spacing: 1px; }
+      .btn-secondary{ font-size: 9px; padding: 6px; }
+      .hint-btn { font-size: 9px; padding: 6px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">
+    <span class="title-main">TÜRKİYE BİLMECESİ</span>
+    <span class="title-sub">coğrafya keşif oyunu</span>
+  </div>
+  <div class="header-ornament">✦ ❧ ✦</div>
+  <div class="hud">
+    <div class="hud-card">
+      <div class="hud-label">Süre</div>
+      <div class="hud-value" id="timer-val">00:00</div>
+    </div>
+    <div class="hud-card">
+      <div class="hud-label">İlerleme</div>
+      <div class="hud-value"><span id="score-value">0</span><span style="font-size:11px;color:rgba(212,169,58,0.5)">/81</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="progress-wrap">
+  <div class="progress-label" id="progress-pct">0%</div>
+  <div class="progress-bg"><div class="progress-fill" id="progress-fill"></div></div>
+</div>
+
+<div class="main-layout">
+  <aside class="sidebar">
+    <div class="panel">
+      <div class="panel-title">İpucu</div>
+      <div class="hint-counter" id="hint-dots"></div>
+      <button class="hint-btn" id="hint-btn">🔍 İPUCU KULLAN</button>
+      <p style="font-size:10px;font-style:italic;color:rgba(212,169,58,0.4);margin-top:8px;line-height:1.4;">
+        En uzak parçayı haritada gösterir.
+      </p>
+    </div>
+
+    <div class="panel action-row">
+      <div class="panel-title">Oyun</div>
+      <button class="btn-primary" id="restart-btn">YENİDEN BAŞLAT</button>
+      <button class="btn-secondary" id="giveup-btn">VAZGEÇ</button>
+    </div>
+
+    <div class="panel" style="flex:1; overflow:hidden; display:flex; flex-direction:column;">
+      <div class="panel-title">Lider Tablosu</div>
+      <div id="leaderboard" style="overflow-y:auto; flex:1;"></div>
+    </div>
+  </aside>
+
+  <div class="map-wrapper" id="map-container"></div>
+</div>
+
+<div id="tooltip"></div>
+
+<div class="overlay" id="win-overlay">
+  <div class="overlay-card">
+    <span class="overlay-icon">🏆</span>
+    <div class="overlay-title">TEBRİKLER!</div>
+    <div class="overlay-msg" id="win-msg">Tüm illeri başarıyla yerleştirdiniz.</div>
+    <div class="overlay-stats">
+      <div class="stat-item">
+        <div class="stat-label">Süre</div>
+        <div class="stat-value" id="win-time">—</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">İpucu</div>
+        <div class="stat-value" id="win-hints">—</div>
+      </div>
+    </div>
+    <div class="name-input-wrap">
+      <label>Adınızı girin (lider tablosuna kayıt)</label>
+      <input class="name-input" id="player-name" type="text" placeholder="Oyuncu adı..." maxlength="18"/>
+    </div>
+    <div class="overlay-btns">
+      <button class="btn-primary" id="save-score-btn" style="flex:1">KAYDET</button>
+      <button class="btn-secondary" id="win-restart-btn" style="flex:1">YENİDEN</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://pffgawknbmjqljzksuqy.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmZmdhd2tuYm1qcWxqemtzdXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyOTg0OTQsImV4cCI6MjA4ODg3NDQ5NH0.NuI91CBFi4SlR566SB1TwCbXg-sWvHPsOi2HYCd3HlQ';
+
+async function sbFetch(path, opts = {}) {
+  const headers = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+  };
+  if (opts.prefer) headers['Prefer'] = opts.prefer;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...opts, headers });
+  if (!res.ok) { const text = await res.text(); throw new Error(text); }
+  if (res.status === 204 || res.headers.get('content-length') === '0') return null;
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+const TOTAL     = 81;
+const MAX_HINTS = 5;
+const SNAP_DIST = 18;
+let correctPieces = 0;
+let timerStarted  = false;
+let startTime, timerInterval;
+let hintsUsed = 0;
+let hintsLeft = MAX_HINTS;
+let scoreSaved = false;
+
+async function fetchLeaderboard() {
+  renderLeaderboardLoading();
+  try {
+    const data = await sbFetch('scores?select=name,seconds,time_display,hints_used&order=seconds.asc&limit=15');
+    renderLeaderboard(data);
+  } catch(e) {
+    document.getElementById('leaderboard').innerHTML = '<p class="lb-empty">Bağlantı hatası.</p>';
+  }
+}
+
+async function submitScore(name, seconds, timeDisplay, hintsUsed) {
+  await sbFetch('scores', {
+    method: 'POST', prefer: 'return=minimal',
+    body: JSON.stringify({ name, seconds, time_display: timeDisplay, hints_used: hintsUsed })
+  });
+}
+
+function renderLeaderboardLoading() {
+  document.getElementById('leaderboard').innerHTML = '<p class="lb-loading">Yükleniyor…</p>';
+}
+
+function renderLeaderboard(lb) {
+  const el = document.getElementById('leaderboard');
+  if (!lb || !lb.length) { el.innerHTML = '<p class="lb-empty">Henüz kayıt yok.</p>'; return; }
+  const medal   = i => i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
+  const rankCls = i => i===0?'gold':i===1?'silver':i===2?'bronze':'';
+  el.innerHTML = lb.map((e,i) => `
+    <div class="lb-entry">
+      <span class="lb-rank ${rankCls(i)}">${medal(i)}</span>
+      <span class="lb-name">${e.name}</span>
+      <span style="font-size:9px;color:rgba(212,169,58,0.4);font-family:'Cinzel',serif">💡${e.hints_used}</span>
+      <span class="lb-time">${e.time_display}</span>
+    </div>`).join('');
+}
+
+function startTimer() {
+  startTime = Date.now();
+  timerInterval = setInterval(() => {
+    const s = Math.floor((Date.now()-startTime)/1000);
+    const m = Math.floor(s/60).toString().padStart(2,'0');
+    const sec = (s%60).toString().padStart(2,'0');
+    document.getElementById('timer-val').textContent = `${m}:${sec}`;
+  }, 500);
+}
+function stopTimer() { clearInterval(timerInterval); }
+function getElapsedTime() {
+  const s = Math.floor((Date.now()-startTime)/1000);
+  return {
+    display: `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`,
+    seconds: s
+  };
+}
+
+function updateScore() {
+  document.getElementById('score-value').textContent = correctPieces;
+  const pct = Math.round((correctPieces/TOTAL)*100);
+  document.getElementById('progress-fill').style.width = pct+'%';
+  document.getElementById('progress-pct').textContent = pct+'%';
+}
+
+function renderHintDots() {
+  const wrap = document.getElementById('hint-dots');
+  wrap.innerHTML = '';
+  for (let i=0; i<MAX_HINTS; i++) {
+    const d = document.createElement('div');
+    d.className = 'hint-dot'+(i>=hintsLeft?' used':'');
+    wrap.appendChild(d);
+  }
+  document.getElementById('hint-btn').disabled = (hintsLeft<=0);
+}
+
+const tooltip = document.getElementById('tooltip');
+function showTooltip(e,text) { tooltip.textContent=text; tooltip.style.opacity='1'; moveTooltip(e); }
+function moveTooltip(e) { tooltip.style.left=(e.clientX+14)+'px'; tooltip.style.top=(e.clientY-28)+'px'; }
+function hideTooltip() { tooltip.style.opacity='0'; }
+
+const container = document.getElementById('map-container');
+const W = container.clientWidth  || 960;
+const H = container.clientHeight || 620;
+
+const svg = d3.select('#map-container')
+  .append('svg')
+  .attr('width','100%').attr('height','100%')
+  .attr('viewBox',`0 0 ${W} ${H}`)
+  .style('overflow','hidden');
+
+svg.append('rect').attr('width',W).attr('height',H).attr('fill','#7ba3b8').attr('opacity',0.18);
+
+const FM = 8;
+svg.append('rect').attr('x',FM).attr('y',FM)
+  .attr('width',W-FM*2).attr('height',H-FM*2)
+  .attr('fill','none').attr('stroke','rgba(184,134,11,0.5)').attr('stroke-width',2).attr('rx',6);
+
+const projection = d3.geoMercator().center([35,39]).scale(W*2.5).translate([W/2,H/2]);
+const path = d3.geoPath().projection(projection);
+
+const defs = svg.append('defs');
+defs.append('filter').attr('id','shadow').append('feDropShadow')
+  .attr('dx','0').attr('dy','2').attr('stdDeviation','3').attr('flood-opacity','0.35');
+defs.append('filter').attr('id','glow').append('feDropShadow')
+  .attr('dx','0').attr('dy','0').attr('stdDeviation','4')
+  .attr('flood-color','#ffd700').attr('flood-opacity','0.7');
+const placedGrad = defs.append('linearGradient').attr('id','placedGrad')
+  .attr('x1','0').attr('y1','0').attr('x2','0').attr('y2','1');
+placedGrad.append('stop').attr('offset','0%').attr('stop-color','#66bb6a');
+placedGrad.append('stop').attr('offset','100%').attr('stop-color','#388e3c');
+
+d3.json('turkiye.geojson').then(data => {
+
+  svg.selectAll('.base-province').data(data.features).enter().append('path')
+    .attr('class','base-province').attr('d',path)
+    .attr('fill','rgba(200,190,170,0.2)').attr('stroke','rgba(184,134,11,0.25)').attr('stroke-width',0.8);
+
+  // ── ŞEHİR İSİMLERİ — çift katmanlı halo tekniği (kartografik standart) ──
+  // Altta: kalın beyaz stroke (halo), üstte: ince siyah stroke + altın fill
+  // Bu sayede hem açık hem koyu arka planlarda net okunur, rect gerekmez
+
+  // Halo katmanı (altta) — ince, sadece okunabilirlik için
+  svg.selectAll('.province-label-halo').data(data.features).enter().append('text')
+    .attr('class', d=>`province-label-halo lbl-${d.properties.ilad.replace(/\s/g,'_')}`)
+    .attr('x', d=>path.centroid(d)[0]).attr('y', d=>path.centroid(d)[1])
+    .text(d=>d.properties.ilad)
+    .attr('text-anchor','middle').attr('dominant-baseline','middle')
+    .attr('font-size','8.5px').attr('font-family','Cinzel, serif').attr('font-weight','400')
+    .attr('fill','none')
+    .attr('stroke','rgba(15,7,0,0.85)')
+    .attr('stroke-width','2.5px')
+    .attr('stroke-linejoin','round')
+    .style('pointer-events','none').style('user-select','none');
+
+  // Yazı katmanı (üstte) — ince weight, yumuşak renk
+  svg.selectAll('.province-label').data(data.features).enter().append('text')
+    .attr('class', d=>`province-label lbl-${d.properties.ilad.replace(/\s/g,'_')}`)
+    .attr('x', d=>path.centroid(d)[0]).attr('y', d=>path.centroid(d)[1])
+    .text(d=>d.properties.ilad)
+    .attr('text-anchor','middle').attr('dominant-baseline','middle')
+    .attr('font-size','8.5px').attr('font-family','Cinzel, serif').attr('font-weight','400')
+    .attr('fill','#f0d878')
+    .style('pointer-events','none').style('user-select','none');
+
+  const shuffled = [...data.features].sort(()=>Math.random()-0.5);
+  const pieces = svg.selectAll('.piece').data(shuffled).enter().append('g').attr('class','piece');
+
+  const frameW = W-FM*2, frameH = H-FM*2;
+  const perimeter = 2*(frameW+frameH);
+  const step = perimeter/shuffled.length;
+  const border = 38;
+
+  pieces.each(function(d,i) {
+    const dist = step*i; let x,y;
+    if      (dist < frameW)              { x=FM+dist;              y=FM+border; }
+    else if (dist < frameW+frameH)       { x=FM+frameW-border;     y=FM+(dist-frameW); }
+    else if (dist < 2*frameW+frameH)     { x=FM+frameW-(dist-frameW-frameH); y=FM+frameH-border; }
+    else                                  { x=FM+border;            y=FM+frameH-(dist-2*frameW-frameH); }
+
+    const centroid = path.centroid(d);
+    d3.select(this).attr('transform',`translate(${x},${y}) scale(0.5)`).style('opacity',0)
+      .transition().duration(700).delay(i*18).ease(d3.easeCubicOut)
+      .attr('transform',`translate(${x},${y}) scale(1)`).style('opacity',1);
+
+    d3.select(this).append('path').attr('d',path(d))
+      .attr('fill','#c8b890').attr('stroke','#6b4c2a').attr('stroke-width',1)
+      .attr('transform',`translate(${-centroid[0]},${-centroid[1]})`)
+      .style('filter','url(#shadow)').style('cursor','grab');
+  });
+
+  // Touch + mouse koordinat yardımcısı
+  function evtCoords(event) {
+    const src = event.sourceEvent;
+    if (!src) return { x: event.x, y: event.y };
+    if (src.touches && src.touches.length)
+      return { x: src.touches[0].clientX, y: src.touches[0].clientY };
+    if (src.changedTouches && src.changedTouches.length)
+      return { x: src.changedTouches[0].clientX, y: src.changedTouches[0].clientY };
+    return { x: src.clientX, y: src.clientY };
+  }
+
+  // SVG viewBox koordinatına dönüştürme
+  function svgPoint(clientX, clientY) {
+    const svgEl = svg.node();
+    const pt = svgEl.createSVGPoint();
+    pt.x = clientX; pt.y = clientY;
+    const ctm = svgEl.getScreenCTM();
+    if (!ctm) return { x: clientX, y: clientY };
+    const inv = ctm.inverse();
+    const tp = pt.matrixTransform(inv);
+    return { x: tp.x, y: tp.y };
+  }
+
+  let offsetX, offsetY;
+
+  pieces
+    .on('mouseover', function(event,d) {
+      if (d3.select(this).classed('fixed')) return;
+      d3.select(this).select('path').transition().duration(120).attr('fill','#d4c4a0').attr('stroke','#b8860b');
+      d3.select(this).raise();
+    })
+    .on('mousemove', null)
+    .on('mouseout', function() {
+      if (d3.select(this).classed('fixed')) return;
+      d3.select(this).select('path').transition().duration(120).attr('fill','#c8b890').attr('stroke','#6b4c2a');
+    });
+
+  const drag = d3.drag()
+    .on('start', function(event) {
+      if (d3.select(this).classed('fixed')) return;
+      const coords = evtCoords(event);
+      const svgCoords = svgPoint(coords.x, coords.y);
+      const t = d3.select(this).attr('transform').match(/translate\(([^,]+),([^)]+)\)/);
+      offsetX = svgCoords.x - parseFloat(t[1]);
+      offsetY = svgCoords.y - parseFloat(t[2]);
+      d3.select(this).raise().classed('active',true)
+        .select('path').style('cursor','grabbing');
+    })
+    .on('drag', function(event,d) {
+      if (d3.select(this).classed('fixed')) return;
+      if (!timerStarted) { startTimer(); timerStarted=true; }
+      const coords = evtCoords(event);
+      const svgCoords = svgPoint(coords.x, coords.y);
+      let nx = svgCoords.x - offsetX;
+      let ny = svgCoords.y - offsetY;
+      const bbox = d3.select(this).select('path').node().getBBox();
+      nx = Math.max(FM+bbox.width/2, Math.min(FM+frameW-bbox.width/2, nx));
+      ny = Math.max(FM+bbox.height/2, Math.min(FM+frameH-bbox.height/2, ny));
+      d3.select(this).attr('transform',`translate(${nx},${ny})`);
+    })
+    .on('end', function(event,d) {
+      if (d3.select(this).classed('fixed')) return;
+      const [cx,cy] = path.centroid(d);
+      const t = d3.select(this).attr('transform').match(/translate\(([^,]+),([^)]+)\)/);
+      const dist = Math.hypot(cx-parseFloat(t[1]), cy-parseFloat(t[2]));
+
+      if (dist <= SNAP_DIST) {
+        d3.select(this).interrupt()
+          .transition().duration(280).ease(d3.easeCubicOut)
+          .attr('transform',`translate(${cx},${cy}) scale(1.06)`)
+          .transition().duration(180)
+          .attr('transform',`translate(${cx},${cy}) scale(1)`);
+
+        d3.select(this).select('path').interrupt()
+          .attr('fill','url(#placedGrad)').attr('stroke','rgba(255,255,255,0.6)')
+          .attr('stroke-width',1.2).style('filter','none');
+
+        d3.select(this).classed('fixed',true)
+          .on('mouseover',null).on('mousemove',null).on('mouseout',null);
+
+        const ripple = svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',0)
+          .attr('fill','none').attr('stroke','rgba(255,215,0,0.5)').attr('stroke-width','2')
+          .attr('class','snap-ripple');
+        setTimeout(()=>ripple.remove(), 600);
+
+        d3.select(this).append('text').text(d.properties.ilad)
+          .attr('font-size','9px').attr('font-family','Cinzel, serif')
+          .attr('fill','#fff').attr('font-weight','700').attr('text-anchor','middle').attr('dy','3px')
+          .style('user-select','none').style('paint-order','stroke')
+          .style('stroke','rgba(0,0,0,0.7)').style('stroke-width','3px').style('pointer-events','none');
+
+        svg.selectAll(`.lbl-${d.properties.ilad.replace(/\s/g,'_')}`).remove();
+        correctPieces++;
+        updateScore();
+        if (correctPieces === TOTAL) onWin();
+      }
+      d3.select(this).classed('active',false).select('path').style('cursor','grab');
+    });
+
+  pieces.call(drag);
+
+  // Mobilde parçaya dokunulduğunda sayfanın kaymamasını engelle
+  svg.node().addEventListener('touchstart', e => {
+    if (e.target.closest('.piece:not(.fixed)')) e.preventDefault();
+  }, { passive: false });
+  svg.node().addEventListener('touchmove', e => {
+    if (e.target.closest('.piece:not(.fixed)')) e.preventDefault();
+  }, { passive: false });
+
+  updateScore();
+
+  let worstPieceData;
+  document.getElementById('hint-btn').addEventListener('click', () => {
+    if (hintsLeft <= 0) return;
+    let worstPiece = null, worstDist = -1;
+    pieces.each(function(d) {
+      if (d3.select(this).classed('fixed')) return;
+      const [cx,cy] = path.centroid(d);
+      const t = d3.select(this).attr('transform').match(/translate\(([^,]+),([^)]+)\)/);
+      if (!t) return;
+      const dist = Math.hypot(cx-parseFloat(t[1]), cy-parseFloat(t[2]));
+      if (dist > worstDist) { worstDist=dist; worstPiece=this; worstPieceData=d; }
+    });
+    if (!worstPiece) return;
+    hintsLeft--; hintsUsed++;
+    renderHintDots();
+    const il = worstPieceData.properties.ilad;
+    svg.selectAll('.base-province').filter(dd=>dd.properties.ilad===il)
+      .transition().duration(200).attr('fill','rgba(255,215,0,0.35)')
+      .transition().duration(1500).attr('fill','rgba(200,190,170,0.2)');
+    d3.select(worstPiece).classed('hint-target',true);
+    setTimeout(()=>d3.select(worstPiece).classed('hint-target',false), 2200);
+  });
+
+  function onWin() {
+    stopTimer();
+    const elapsed = getElapsedTime();
+    document.getElementById('win-time').textContent  = elapsed.display;
+    document.getElementById('win-hints').textContent = `${hintsUsed} / ${MAX_HINTS}`;
+    const msgs = [
+      'Türkiye\'nin her köşesini avucunuzun içi gibi biliyorsunuz!',
+      'Olağanüstü bir performans! Coğrafya ustasısınız.',
+      'Harika! Tüm iller doğru yerinde.'
+    ];
+    document.getElementById('win-msg').textContent = msgs[Math.floor(Math.random()*msgs.length)];
+    setTimeout(()=>document.getElementById('win-overlay').classList.add('visible'), 400);
+
+    const burst = setInterval(()=>{
+      confetti({ startVelocity:35, spread:280, ticks:55, particleCount:50,
+        origin:{x:Math.random(),y:Math.random()-0.15},
+        colors:['#b8860b','#ffd700','#f5efe0','#4caf50','#c8b890'] });
+    }, 220);
+    setTimeout(()=>clearInterval(burst), 4500);
+
+    document.getElementById('save-score-btn').addEventListener('click', async () => {
+      if (scoreSaved) return;
+      const btn  = document.getElementById('save-score-btn');
+      const name = document.getElementById('player-name').value.trim() || 'Anonim';
+      btn.textContent = '⏳ KAYDEDİLİYOR…';
+      btn.disabled = true;
+      try {
+        await submitScore(name, elapsed.seconds, elapsed.display, hintsUsed);
+        scoreSaved = true;
+        btn.textContent = '✓ KAYDEDİLDİ';
+        await fetchLeaderboard();
+      } catch(e) {
+        btn.textContent = '✗ HATA — TEKRAR DENEYİN';
+        btn.disabled = false;
+      }
+    });
+  }
+
+});
+
+document.getElementById('restart-btn').addEventListener('click', ()=>{
+  if (confirm('Oyunu sıfırlayıp yeniden başlatmak istediğinize emin misiniz?')) location.reload();
+});
+document.getElementById('giveup-btn').addEventListener('click', ()=>{
+  if (confirm('Oyundan çıkmak istediğinize emin misiniz?')) location.reload();
+});
+document.getElementById('win-restart-btn').addEventListener('click', ()=>location.reload());
+
+renderHintDots();
+fetchLeaderboard();
+</script>
+</body>
+</html>
