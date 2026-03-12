@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Türkiye Bulmacası</title>
+  <title>Nerede Bu İl?</title>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -373,8 +373,8 @@
 
 <header>
   <div class="header-left">
-    <span class="title-main">TÜRKİYE BİLMECESİ</span>
-    <span class="title-sub">coğrafya keşif oyunu</span>
+    <span class="title-main">Şehir Şehir Türkiye</span>
+    <span class="title-sub">türkiye şehir puzzle harita bulmaca oyunu</span>
   </div>
   <div class="header-center">✦ ❧ ✦</div>
   <div class="hud">
@@ -413,16 +413,16 @@
     <div class="panel">
       <div class="panel-title">İpucu</div>
       <div class="hint-dots" id="hint-dots"></div>
-      <button class="hint-btn" id="hint-btn">🔍 İPUCU KULLAN</button>
+      <button class="hint-btn" id="hint-btn">🔍 İPUCU İSTE</button>
       <p style="font-size:9.5px;font-style:italic;color:rgba(212,169,58,0.35);margin-top:7px;line-height:1.4;">
-        En uzak parçayı haritada gösterir.
+        En uzakta kalan parçayı haritada gösterir.
       </p>
     </div>
 
     <!-- Oyun -->
     <div class="panel action-row">
       <div class="panel-title">Oyun</div>
-      <button class="btn-primary" id="restart-btn">YENİDEN BAŞLAT</button>
+      <button class="btn-primary" id="restart-btn">BAŞTAN BAŞLA</button>
     </div>
 
     <!-- Lider tablosu -->
@@ -441,44 +441,44 @@
 <div id="start-overlay">
   <div class="start-card">
     <span class="start-emblem">🗺️</span>
-    <div class="start-title">TÜRKİYE BİLMECESİ</div>
-    <div class="start-sub">coğrafya keşif oyunu</div>
+    <div class="start-title">Şehir Şehir Türkiye</div>
+    <div class="start-sub">türkiye şehir puzzle harita bulmaca oyunu</div>
     <div class="start-rules">
       <div class="start-rule">
         <span class="start-rule-icon">🧩</span>
-        <span class="start-rule-text">81 ili doğru konuma sürükle ve bırak</span>
+        <span class="start-rule-text">Parçaları doğru konuma sürükle, yerine oturduğunda kilitlenir</span>
       </div>
       <div class="start-divider"></div>
       <div class="start-rule">
         <span class="start-rule-icon">⏱️</span>
-        <span class="start-rule-text">Süren ilk parçayı hareket ettirince başlar</span>
+        <span class="start-rule-text">Süre ilk hamlende başlar — ne kadar hızlısın?</span>
       </div>
       <div class="start-divider"></div>
       <div class="start-rule">
         <span class="start-rule-icon">🔍</span>
-        <span class="start-rule-text">5 ipucu hakkın var, dikkatli kullan</span>
+        <span class="start-rule-text">Sıkışırsan 5 ipucu hakkın var, akıllıca kullan</span>
       </div>
     </div>
-    <button class="btn-start" id="start-btn">OYUNA BAŞLA</button>
+    <button class="btn-start" id="start-btn">HADI BAŞLAYALIM</button>
   </div>
 </div>
 
 <div class="overlay" id="win-overlay">
   <div class="overlay-card">
     <span class="overlay-icon">🏆</span>
-    <div class="overlay-title">TEBRİKLER!</div>
-    <div class="overlay-msg" id="win-msg">Tüm illeri başarıyla yerleştirdiniz.</div>
+    <div class="overlay-title">HARİKASIN!</div>
+    <div class="overlay-msg" id="win-msg">Tüm illeri doğru konumlarına yerleştirdin.</div>
     <div class="overlay-stats">
       <div class="stat-item"><div class="stat-label">Süre</div><div class="stat-value" id="win-time">—</div></div>
       <div class="stat-item"><div class="stat-label">İpucu</div><div class="stat-value" id="win-hints">—</div></div>
     </div>
     <div class="name-input-wrap">
-      <label>Adınızı girin (lider tablosuna kayıt)</label>
+      <label>Adın ne? (lider tablosuna ekleyelim)</label>
       <input class="name-input" id="player-name" type="text" placeholder="Oyuncu adı..." maxlength="18"/>
     </div>
     <div class="overlay-btns">
-      <button class="btn-primary"   id="save-score-btn" style="flex:1">KAYDET</button>
-      <button class="btn-secondary" id="win-restart-btn" style="flex:1">YENİDEN</button>
+      <button class="btn-primary"   id="save-score-btn" style="flex:1">SKORU KAYDET</button>
+      <button class="btn-secondary" id="win-restart-btn" style="flex:1">TEKRAR OYNA</button>
     </div>
   </div>
 </div>
@@ -851,9 +851,9 @@ d3.json('turkiye.geojson').then(data => {
     document.getElementById('win-time').textContent=elapsed.display;
     document.getElementById('win-hints').textContent=`${hintsUsed} / ${MAX_HINTS}`;
     const msgs=[
-      'Türkiye\'nin her köşesini avucunuzun içi gibi biliyorsunuz!',
-      'Olağanüstü bir performans! Coğrafya ustasısınız.',
-      'Harika! Tüm iller yerli yerinde.'
+      'Türkiye\'nin her köşesini ezbere biliyorsun! 🇹🇷',
+      'Coğrafya dersleri boşa gitmemiş! Resmen harita ustasısın.',
+      '81 ilin hepsini bildin — gözlerin kapalı bile yaparsın artık.',
     ];
     document.getElementById('win-msg').textContent=msgs[Math.floor(Math.random()*msgs.length)];
     setTimeout(()=>document.getElementById('win-overlay').classList.add('visible'),400);
@@ -882,7 +882,7 @@ d3.json('turkiye.geojson').then(data => {
 
 /* ── BUTTONS ── */
 document.getElementById('restart-btn').addEventListener('click',()=>{
-  if(confirm('Oyunu sıfırlayıp yeniden başlatmak istediğinize emin misiniz?')) location.reload();
+  if(confirm('Her şey silinecek ve baştan başlayacaksın. Emin misin?')) location.reload();
 });
 document.getElementById('win-restart-btn').addEventListener('click',()=>location.reload());
 
