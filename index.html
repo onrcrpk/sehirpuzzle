@@ -284,6 +284,86 @@
       .panel-title { font-size:8px; }
     }
 
+    /* ── BAŞLANGIÇ OVERLAY ── */
+    #start-overlay {
+      position: fixed; inset: 0;
+      background: rgba(8,5,2,0.92);
+      backdrop-filter: blur(10px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+      transition: opacity 0.5s ease;
+    }
+    #start-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .start-card {
+      background: linear-gradient(160deg, #2a1e0c, #16100a);
+      border: 1px solid rgba(184,134,11,0.45);
+      border-radius: 16px;
+      padding: 52px 56px;
+      text-align: center;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 0 100px rgba(184,134,11,0.15), 0 24px 64px rgba(0,0,0,0.7);
+    }
+    .start-emblem {
+      font-size: 56px;
+      margin-bottom: 18px;
+      display: block;
+      filter: drop-shadow(0 0 20px rgba(184,134,11,0.5));
+    }
+    .start-title {
+      font-family: 'Cinzel', serif;
+      font-size: 28px; font-weight: 700;
+      letter-spacing: 4px;
+      color: var(--gold-light);
+      text-shadow: 0 0 40px rgba(212,169,58,0.4);
+      margin-bottom: 6px;
+    }
+    .start-sub {
+      font-family: 'Crimson Pro', serif;
+      font-style: italic; font-size: 15px;
+      color: rgba(212,169,58,0.5);
+      letter-spacing: 2px;
+      margin-bottom: 32px;
+    }
+    .start-rules {
+      display: flex; gap: 20px; justify-content: center;
+      margin-bottom: 36px;
+    }
+    .start-rule {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      flex: 1;
+    }
+    .start-rule-icon { font-size: 24px; }
+    .start-rule-text {
+      font-family: 'Crimson Pro', serif;
+      font-size: 12px; color: rgba(245,239,224,0.55);
+      line-height: 1.4; text-align: center;
+    }
+    .start-divider {
+      width: 1px; background: rgba(184,134,11,0.2);
+      align-self: stretch;
+    }
+    .btn-start {
+      width: 100%; padding: 14px;
+      border: none; border-radius: 9px;
+      background: linear-gradient(135deg, #b8860b, #f0c040, #b8860b);
+      background-size: 200% auto;
+      color: #1a1000;
+      font-family: 'Cinzel', serif;
+      font-size: 14px; letter-spacing: 3px; font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 20px rgba(184,134,11,0.35);
+    }
+    .btn-start:hover {
+      background-position: right center;
+      box-shadow: 0 6px 28px rgba(184,134,11,0.55);
+      transform: translateY(-2px);
+    }
+
     ::-webkit-scrollbar { width:3px; }
     ::-webkit-scrollbar-track { background:transparent; }
     ::-webkit-scrollbar-thumb { background:rgba(184,134,11,0.25); border-radius:2px; }
@@ -358,6 +438,31 @@
 
 <div id="tooltip"></div>
 
+<div id="start-overlay">
+  <div class="start-card">
+    <span class="start-emblem">🗺️</span>
+    <div class="start-title">TÜRKİYE BİLMECESİ</div>
+    <div class="start-sub">coğrafya keşif oyunu</div>
+    <div class="start-rules">
+      <div class="start-rule">
+        <span class="start-rule-icon">🧩</span>
+        <span class="start-rule-text">81 ili doğru konuma sürükle ve bırak</span>
+      </div>
+      <div class="start-divider"></div>
+      <div class="start-rule">
+        <span class="start-rule-icon">⏱️</span>
+        <span class="start-rule-text">Süren ilk parçayı hareket ettirince başlar</span>
+      </div>
+      <div class="start-divider"></div>
+      <div class="start-rule">
+        <span class="start-rule-icon">🔍</span>
+        <span class="start-rule-text">5 ipucu hakkın var, dikkatli kullan</span>
+      </div>
+    </div>
+    <button class="btn-start" id="start-btn">OYUNA BAŞLA</button>
+  </div>
+</div>
+
 <div class="overlay" id="win-overlay">
   <div class="overlay-card">
     <span class="overlay-icon">🏆</span>
@@ -396,6 +501,15 @@ async function sbFetch(path, opts={}) {
 const TOTAL=81, MAX_HINTS=5, SNAP_DIST=18;
 let correctPieces=0, timerStarted=false, startTime, timerInterval;
 let hintsUsed=0, hintsLeft=MAX_HINTS, scoreSaved=false;
+let gameStarted=false;
+
+/* ── START BUTTON ── */
+document.getElementById('start-btn').addEventListener('click', () => {
+  gameStarted = true;
+  const overlay = document.getElementById('start-overlay');
+  overlay.classList.add('hidden');
+  setTimeout(() => overlay.remove(), 500);
+});
 
 /* ── LEADERBOARD ── */
 async function fetchLeaderboard() {
@@ -631,6 +745,7 @@ d3.json('turkiye.geojson').then(data => {
   const drag=d3.drag()
     .on('start',function(event){
       if(d3.select(this).classed('fixed')) return;
+      if(!gameStarted) return;
       hideTT();
       const c=evtCoords(event), sc=svgPoint(c.x,c.y);
       const t=d3.select(this).attr('transform').match(/translate\(([^,]+),([^)]+)\)/);
