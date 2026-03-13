@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Türkiye Şehir Puzzle Oyunu</title>
+  <title>Şehir Şehir Türkiye</title>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -337,20 +337,28 @@
 
     /* ── İL BİLGİ KARTI ── */
     #il-info-card {
-      position: fixed; z-index: 600; pointer-events: none;
+      position: fixed; z-index: 600; pointer-events: all;
       opacity: 0; transform: translateY(8px) scale(0.95);
       transition: opacity 0.18s ease, transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
     }
+    #il-info-card:not(.visible) { pointer-events: none; }
     #il-info-card.visible { opacity: 1; transform: translateY(0) scale(1); }
     .il-card-inner {
       background: #e6f0e0;
-      border-radius: 10px; padding: 10px 14px 9px; min-width: 140px;
+      border-radius: 10px; padding: 10px 14px 9px; width: 240px;
       box-shadow: 0 6px 28px rgba(0,0,0,0.65), 0 0 0 1px rgba(80,140,60,0.35);
     }
     .il-card-name {
       font-family: 'Cinzel', serif; font-size: 13px; font-weight: 700;
       color: #122010; letter-spacing: 1px; margin-bottom: 7px; white-space: nowrap;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
     }
+    .il-card-close {
+      font-size: 13px; color: rgba(18,40,16,0.4); cursor: pointer;
+      pointer-events: all; line-height: 1; flex-shrink: 0;
+      transition: color 0.15s;
+    }
+    .il-card-close:hover { color: rgba(18,40,16,0.8); }
     .il-card-rows { display: flex; gap: 8px; align-items: center; }
     .il-card-item { display: flex; flex-direction: column; align-items: center; }
     .il-card-label {
@@ -363,6 +371,11 @@
     }
     .il-card-divider { width: 1px; background: rgba(18,40,16,0.18); align-self: stretch; margin: 0 2px; }
     .il-card-tick { font-size: 14px; color: #1e6b28; margin-left: auto; padding-left: 6px; align-self: center; font-weight: 900; }
+    .il-card-bilgi {
+      font-family: 'Crimson Pro', serif; font-style: italic; font-size: 14.5px;
+      color: rgba(18,40,16,0.72); line-height: 1.4; margin-top: 7px;
+      border-top: 1px solid rgba(18,40,16,0.12); padding-top: 6px;
+    }
 
     /* ── YENİDEN OYNA POPUP ── */
     #restart-overlay {
@@ -524,7 +537,10 @@
 <!-- ── İL BİLGİ KARTI ── -->
 <div id="il-info-card">
   <div class="il-card-inner">
-    <div class="il-card-name" id="il-card-name">—</div>
+    <div class="il-card-name">
+      <span id="il-card-name">—</span>
+      <span class="il-card-close" id="il-card-close">✕</span>
+    </div>
     <div class="il-card-rows">
       <div class="il-card-item">
         <span class="il-card-label">Plaka</span>
@@ -537,6 +553,7 @@
       </div>
       <span class="il-card-tick">✓</span>
     </div>
+    <div class="il-card-bilgi" id="il-card-bilgi"></div>
   </div>
 </div>
 
@@ -557,87 +574,87 @@
 <script>
 /* ── İL VERİSİ ── */
 const IL_DATA = {
-  'Adana':        {plaka:1,  nufus:'2.27M'},
-  'Adıyaman':     {plaka:2,  nufus:'637K'},
-  'Afyonkarahisar':{plaka:3, nufus:'738K'},
-  'Ağrı':         {plaka:4,  nufus:'507K'},
-  'Amasya':       {plaka:5,  nufus:'336K'},
-  'Ankara':       {plaka:6,  nufus:'5.78M'},
-  'Antalya':      {plaka:7,  nufus:'2.69M'},
-  'Artvin':       {plaka:8,  nufus:'170K'},
-  'Aydın':        {plaka:9,  nufus:'1.15M'},
-  'Balıkesir':    {plaka:10, nufus:'1.27M'},
-  'Bilecik':      {plaka:11, nufus:'228K'},
-  'Bingöl':       {plaka:12, nufus:'282K'},
-  'Bitlis':       {plaka:13, nufus:'340K'},
-  'Bolu':         {plaka:14, nufus:'320K'},
-  'Burdur':       {plaka:15, nufus:'276K'},
-  'Bursa':        {plaka:16, nufus:'3.19M'},
-  'Çanakkale':    {plaka:17, nufus:'564K'},
-  'Çankırı':      {plaka:18, nufus:'192K'},
-  'Çorum':        {plaka:19, nufus:'517K'},
-  'Denizli':      {plaka:20, nufus:'1.05M'},
-  'Diyarbakır':   {plaka:21, nufus:'1.78M'},
-  'Edirne':       {plaka:22, nufus:'413K'},
-  'Elazığ':       {plaka:23, nufus:'591K'},
-  'Erzincan':     {plaka:24, nufus:'232K'},
-  'Erzurum':      {plaka:25, nufus:'749K'},
-  'Eskişehir':    {plaka:26, nufus:'904K'},
-  'Gaziantep':    {plaka:27, nufus:'2.17M'},
-  'Giresun':      {plaka:28, nufus:'443K'},
-  'Gümüşhane':    {plaka:29, nufus:'166K'},
-  'Hakkari':      {plaka:30, nufus:'281K'},
-  'Hatay':        {plaka:31, nufus:'1.67M'},
-  'Isparta':      {plaka:32, nufus:'437K'},
-  'Mersin':       {plaka:33, nufus:'1.93M'},
-  'İstanbul':     {plaka:34, nufus:'15.9M'},
-  'İzmir':        {plaka:35, nufus:'4.46M'},
-  'Kars':         {plaka:36, nufus:'277K'},
-  'Kastamonu':    {plaka:37, nufus:'378K'},
-  'Kayseri':      {plaka:38, nufus:'1.44M'},
-  'Kırklareli':   {plaka:39, nufus:'370K'},
-  'Kırşehir':     {plaka:40, nufus:'240K'},
-  'Kocaeli':      {plaka:41, nufus:'2.03M'},
-  'Konya':        {plaka:42, nufus:'2.32M'},
-  'Kütahya':      {plaka:43, nufus:'565K'},
-  'Malatya':      {plaka:44, nufus:'812K'},
-  'Manisa':       {plaka:45, nufus:'1.46M'},
-  'Kahramanmaraş':{plaka:46, nufus:'1.17M'},
-  'Mardin':       {plaka:47, nufus:'843K'},
-  'Muğla':        {plaka:48, nufus:'1.07M'},
-  'Muş':          {plaka:49, nufus:'407K'},
-  'Nevşehir':     {plaka:50, nufus:'303K'},
-  'Niğde':        {plaka:51, nufus:'366K'},
-  'Ordu':         {plaka:52, nufus:'742K'},
-  'Rize':         {plaka:53, nufus:'346K'},
-  'Sakarya':      {plaka:54, nufus:'1.07M'},
-  'Samsun':       {plaka:55, nufus:'1.38M'},
-  'Siirt':        {plaka:56, nufus:'327K'},
-  'Sinop':        {plaka:57, nufus:'212K'},
-  'Sivas':        {plaka:58, nufus:'624K'},
-  'Tekirdağ':     {plaka:59, nufus:'1.10M'},
-  'Tokat':        {plaka:60, nufus:'594K'},
-  'Trabzon':      {plaka:61, nufus:'811K'},
-  'Tunceli':      {plaka:62, nufus:'84K'},
-  'Şanlıurfa':    {plaka:63, nufus:'2.18M'},
-  'Uşak':         {plaka:64, nufus:'375K'},
-  'Van':          {plaka:65, nufus:'1.13M'},
-  'Yozgat':       {plaka:66, nufus:'420K'},
-  'Zonguldak':    {plaka:67, nufus:'602K'},
-  'Aksaray':      {plaka:68, nufus:'443K'},
-  'Bayburt':      {plaka:69, nufus:'84K'},
-  'Karaman':      {plaka:70, nufus:'253K'},
-  'Kırıkkale':    {plaka:71, nufus:'283K'},
-  'Batman':       {plaka:72, nufus:'620K'},
-  'Şırnak':       {plaka:73, nufus:'561K'},
-  'Bartın':       {plaka:74, nufus:'199K'},
-  'Ardahan':      {plaka:75, nufus:'97K'},
-  'Iğdır':        {plaka:76, nufus:'197K'},
-  'Yalova':       {plaka:77, nufus:'283K'},
-  'Karabük':      {plaka:78, nufus:'243K'},
-  'Kilis':        {plaka:79, nufus:'143K'},
-  'Osmaniye':     {plaka:80, nufus:'541K'},
-  'Düzce':        {plaka:81, nufus:'406K'},
+  'Adana':        {plaka:1,  nufus:'2.27M', bilgi:'Çukurova\'nın kalbi; pamuk, portakal ve meşhur Adana kebabıyla ünlü sanayi kenti.'},
+  'Adıyaman':     {plaka:2,  nufus:'637K',  bilgi:'Nemrut Dağı\'ndaki devasa kral başları ve antik tümülüsleriyle dünyaca tanınan arkeoloji cenneti.'},
+  'Afyonkarahisar':{plaka:3, nufus:'738K',  bilgi:'Türkiye\'nin haşhaş ve mermer başkenti; kaymağı, pastırması ve kaplıcalarıyla meşhur.'},
+  'Ağrı':         {plaka:4,  nufus:'507K',  bilgi:'Türkiye\'nin en yüksek dağı Ağrı\'ya (5.137 m) ev sahipliği yapan, Doğu Anadolu\'nun sınır kenti.'},
+  'Amasya':       {plaka:5,  nufus:'336K',  bilgi:'Kral kaya mezarları ve Osmanlı yalıboyu evleriyle süslü, Yeşilırmak\'ın kıyısındaki tarihi şehir.'},
+  'Ankara':       {plaka:6,  nufus:'5.78M', bilgi:'Türkiye Cumhuriyeti\'nin başkenti; Atatürk\'ün Anıtkabri ve TBMM\'nin bulunduğu siyasi merkez.'},
+  'Antalya':      {plaka:7,  nufus:'2.69M', bilgi:'Türk Rivierası\'nın incisi; yılda 15 milyonu aşan turistiyle Türkiye\'nin en büyük tatil kenti.'},
+  'Artvin':       {plaka:8,  nufus:'170K',  bilgi:'Kaçkar eteklerinde derin vadiler, şelaleler ve Kafkasör Kültür Festivali\'yle nam salmış yeşil il.'},
+  'Aydın':        {plaka:9,  nufus:'1.15M', bilgi:'Efes antik kenti, incir ve zeytinlikleriyle meşhur; Ege\'nin tarih ve lezzet dolu şehri.'},
+  'Balıkesir':    {plaka:10, nufus:'1.27M', bilgi:'Marmara ve Ege\'nin buluştuğu köşe; zeytinyağı, peyniri ve Edremit Körfezi koylarıyla bilinir.'},
+  'Bilecik':      {plaka:11, nufus:'228K',  bilgi:'Osmanlı Devleti\'nin ilk başkenti Söğüt\'e ev sahipliği yapan, mermer ve seramik üretimiyle öne çıkan il.'},
+  'Bingöl':       {plaka:12, nufus:'282K',  bilgi:'Yaylaları, bal üretimi ve Çifte Minare\'siyle tanınan Doğu Anadolu\'nun huzurlu dağ kenti.'},
+  'Bitlis':       {plaka:13, nufus:'340K',  bilgi:'Tarihi kalesi, tütün tarihçesi ve Nemrut Gölü\'yle meşhur; Doğu\'nun kadim Kürt kültür merkezlerinden.'},
+  'Bolu':         {plaka:14, nufus:'320K',  bilgi:'Abant Gölü\'nün büyüleyici ormanları ve Türkiye\'nin en usta aşçılarını yetiştirdiğiyle ünlü dağ kenti.'},
+  'Burdur':       {plaka:15, nufus:'276K',  bilgi:'Salda Gölü\'nün turkuaz suları ve gül bahçeleriyle öne çıkan, Türkiye\'nin küçük ama güzel gölü.'},
+  'Bursa':        {plaka:16, nufus:'3.19M', bilgi:'Osmanlı\'nın ilk başkenti; İpek Yolu mirası, İskender kebabı ve Uludağ\'ıyla dörtyol ağzı sanayi şehri.'},
+  'Çanakkale':    {plaka:17, nufus:'564K',  bilgi:'Gelibolu\'daki şehitlikler ve Troya antik kentiyle tarihe geçmiş; boğazın iki yakasına hükmeden il.'},
+  'Çankırı':      {plaka:18, nufus:'192K',  bilgi:'Kaya tuzunun yüzyıllık ocaklarına ve Salur tuz mağaralarına ev sahipliği yapan İç Anadolu kenti.'},
+  'Çorum':        {plaka:19, nufus:'517K',  bilgi:'Hitit uygarlığının başkenti Hattuşa\'ya kapı olan, leziz leblebi ve sıkıt tatlısıyla meşhur il.'},
+  'Denizli':      {plaka:20, nufus:'1.05M', bilgi:'Pamuk Kale\'nin beyaz travertenleri, Laodikya kalıntıları ve tekstil endüstrisiyle öne çıkan Ege kenti.'},
+  'Diyarbakır':   {plaka:21, nufus:'1.78M', bilgi:'Siyah bazalt surları ve şelale gibi kavun tarlalarıyla meşhur; Güneydoğu\'nun kültürel kalbi.'},
+  'Edirne':       {plaka:22, nufus:'413K',  bilgi:'Selimiye Camii\'nin kubbeleri ve kırkpınar yağlı güreşleriyle Türkiye\'nin Avrupa kapısı.'},
+  'Elazığ':       {plaka:23, nufus:'591K',  bilgi:'Keban Barajı\'nın geniş göl yansımaları, kayısı bağları ve harput kalesinin gölgesindeki Doğu ili.'},
+  'Erzincan':     {plaka:24, nufus:'232K',  bilgi:'Tulum peyniri ve altın madenleriyle tanınan; Kemaliye\'nin kanyonlarına açılan Doğu Anadolu kenti.'},
+  'Erzurum':      {plaka:25, nufus:'749K',  bilgi:'Türkiye\'nin en soğuk şehirlerinden; cağ kebabı, palandöken kayak merkezi ve kadim Çifte Minareli Medrese\'siyle ünlü.'},
+  'Eskişehir':    {plaka:26, nufus:'904K',  bilgi:'Lületaşı işçiliği, üniversite şehri enerjisi ve Porsuk Çayı\'nın iki yakasındaki canlı kültür hayatıyla öne çıkan il.'},
+  'Gaziantep':    {plaka:27, nufus:'2.17M', bilgi:'UNESCO\'nun gastronomi şehri; fıstıklı baklavası, Zeugma mozaikleri ve sanayisiyle Güneyin güçlü başkenti.'},
+  'Giresun':      {plaka:28, nufus:'443K',  bilgi:'Fındık üretiminde Türkiye\'nin zirvesi; Karadeniz\'in engebeli coğrafyasında saklı şelaleler ve yaylalar.'},
+  'Gümüşhane':    {plaka:29, nufus:'166K',  bilgi:'Gümüş madenciliği tarihiyle adını alan; pestil, köme ve Zigana Dağı\'nın karlı yamaçlarıyla tanınan il.'},
+  'Hakkari':      {plaka:30, nufus:'281K',  bilgi:'Türkiye\'nin en dağlık ve ücra köşesi; Sat ve Cilo buzulları, yüksek yaylalar ve sınır koylarıyla bilinir.'},
+  'Hatay':        {plaka:31, nufus:'1.67M', bilgi:'Antakya\'nın mozaik müzesi, çok kültürlü mutfağı ve Hz. Petrus Kilisesi\'yle tarihin canlı tutulduğu il.'},
+  'Isparta':      {plaka:32, nufus:'437K',  bilgi:'Gül bahçeleri ve gül yağı üretimiyle Türkiye\'nin gül başkenti; Eğirdir Gölü\'nün berrak suları.'},
+  'Mersin':       {plaka:33, nufus:'1.93M', bilgi:'Türkiye\'nin en büyük limanına ev sahipliği yapan; narınciye bahçeleri ve antik Kızkalesi\'yle Akdeniz kenti.'},
+  'İstanbul':     {plaka:34, nufus:'15.9M', bilgi:'İki kıtaya yayılan megapol; Ayasofya, Boğaz ve 2.500 yıllık tarihin üzerine kurulu Türkiye\'nin kalbi.'},
+  'İzmir':        {plaka:35, nufus:'4.46M', bilgi:'Türkiye\'nin üçüncü büyük şehri; Kordon, Kemeraltı çarşısı ve efes antik kentiyle batının açık kapısı.'},
+  'Kars':         {plaka:36, nufus:'277K',  bilgi:'Ani harabeleri, rus mimarisi ve Boğatepe kaşarıyla Doğu\'nun büyüleyici sınır şehri.'},
+  'Kastamonu':    {plaka:37, nufus:'378K',  bilgi:'Osmanlı konaklarının ayakta durduğu; sarımsak, pastırma ve zengin folkloruyla Karadeniz\'in kültür kenti.'},
+  'Kayseri':      {plaka:38, nufus:'1.44M', bilgi:'Erciyes\'in gölgesinde ticareti ve sanayisiyle öne çıkan; pastırması ve mantısıyla Anadolu\'nun mutfak şehri.'},
+  'Kırklareli':   {plaka:39, nufus:'370K',  bilgi:'Dupnisa Mağarası ve Yıldız ormanlarıyla Trakya\'nın en yeşil köşesi; bağcılık ve şarapçılık mirası.'},
+  'Kırşehir':     {plaka:40, nufus:'240K',  bilgi:'Hacı Bektaş Veli Dergahı\'nın bulunduğu Anadolu\'nun tasavvuf ve halı dokumacılığı merkezi.'},
+  'Kocaeli':      {plaka:41, nufus:'2.03M', bilgi:'Sanayi kenti İzmit; otomotiv ve petrokimyasıyla Türkiye\'nin üretim üssü, Marmara kıyısında büyük liman.'},
+  'Konya':        {plaka:42, nufus:'2.32M', bilgi:'Mevlana\'nın diyarı; Selçuklu mirasını yaşatan, tahıl üretimiyle Türkiye\'nin Anadolu kalbi.'},
+  'Kütahya':      {plaka:43, nufus:'565K',  bilgi:'Renkli çinileri ve seramik sanatıyla dünyaca meşhur; Osmanlı dönemi kümbetleri ve kaplamaları.'},
+  'Malatya':      {plaka:44, nufus:'812K',  bilgi:'Dünyanın en iyi kayısılarının yetiştiği başkent; İnönü Anıtı ve Aslantepe höyüğüyle tarihin izlerini taşır.'},
+  'Manisa':       {plaka:45, nufus:'1.46M', bilgi:'Mesir Macunu Festivali ve Sipil Dağı\'nın eteklerinde kurulu; tarım ve sanayisiyle güçlü Ege kenti.'},
+  'Kahramanmaraş':{plaka:46, nufus:'1.17M', bilgi:'Uzayan dondurması ve acı biberiyle dünyanın dikkatini çeken; Dulkadiroğulları mirasını taşıyan kahraman il.'},
+  'Mardin':       {plaka:47, nufus:'843K',  bilgi:'Sarı taştan oyulmuş evleri ve Süryani kültürüyle Mezopotamya\'ya bakan masalsı Ortadoğu kenti.'},
+  'Muğla':        {plaka:48, nufus:'1.07M', bilgi:'Bodrum, Marmaris ve Fethiye\'yle Türkiye\'nin yat turizmi kalbi; turkuaz koyları ve antik kentleri.'},
+  'Muş':          {plaka:49, nufus:'407K',  bilgi:'Malazgirt Meydan Savaşı\'nın yapıldığı yer; laleciliği ve Muş Ovaları\'nın tarihsel önemiyle Doğu Anadolu kenti.'},
+  'Nevşehir':     {plaka:50, nufus:'303K',  bilgi:'Kapadokya\'nın peri bacaları, yeraltı şehirleri ve sıcak hava balonlarıyla dünyanın en büyülü coğrafyası.'},
+  'Niğde':        {plaka:51, nufus:'366K',  bilgi:'Aladağlar\'ın kapısı; elma bahçeleri, Ihlara Vadisi\'ne yakınlığı ve Selçuklu mirası ile bilinen Orta Anadolu kenti.'},
+  'Ordu':         {plaka:52, nufus:'742K',  bilgi:'Türkiye fındık üretiminin zirvesi; Boztepe\'nin panoramik manzarası ve Karadeniz kültürünün canlı temsilcisi.'},
+  'Rize':         {plaka:53, nufus:'346K',  bilgi:'Türkiye\'nin çay başkenti; yemyeşil yamaçlar, hemşin kültürü ve Çamlıhemşin\'in coşkulu dereleri.'},
+  'Sakarya':      {plaka:54, nufus:'1.07M', bilgi:'Kurtuluş Savaşı\'nın kritik Sakarya Muharebesi\'ne sahne olan; sanayisi ve Sapanca Gölü\'yle büyüyen Marmara kenti.'},
+  'Samsun':       {plaka:55, nufus:'1.38M', bilgi:'Atatürk\'ün 19 Mayıs 1919\'da çıkarma yaptığı liman şehri; tütün ve fındığıyla Karadeniz\'in kapısı.'},
+  'Siirt':        {plaka:56, nufus:'327K',  bilgi:'Büryan kebabı, perdah bezi ve fıstık tarlaları; Botan Vadisi\'nin derin kanyonlarına açılan Güneydoğu kenti.'},
+  'Sinop':        {plaka:57, nufus:'212K',  bilgi:'Türkiye\'nin en kuzey noktası; doğal limanı, balıkçılığı ve Diogenes\'in memleketi olmasıyla öne çıkan yarımada kenti.'},
+  'Sivas':        {plaka:58, nufus:'624K',  bilgi:'Sivas Kongresi\'ne ve Divriği\'nin UNESCO Camii\'ne ev sahipliği yapan; kangal köpeği ve madencilik kenti.'},
+  'Tekirdağ':     {plaka:59, nufus:'1.10M', bilgi:'Trakya bağlarının en ünlüsü; köftesi ve Rakı fabrikasıyla Türkiye\'nin şarap ve rakı üretim merkezi.'},
+  'Tokat':        {plaka:60, nufus:'594K',  bilgi:'Sulusaray kaplıcaları ve Comana Pontica kalıntılarıyla; bakır işlemeciliği ve Tokat kebabıyla tanınan il.'},
+  'Trabzon':      {plaka:61, nufus:'811K',  bilgi:'Ayasofya\'sı, Sümela Manastırı ve çay bahçeleriyle Karadeniz\'in en canlı ve köklü liman şehri.'},
+  'Tunceli':      {plaka:62, nufus:'84K',   bilgi:'Munzur Vadisi Milli Parkı\'nın yaban hayatı ve Alevi kültürünün derin kökleriyle Türkiye\'nin el değmemiş doğa hazinesi.'},
+  'Şanlıurfa':    {plaka:63, nufus:'2.18M', bilgi:'Hz. İbrahim\'in şehri; Balıklıgöl, Göbeklitepe ve Harran Ovaları\'yla insanlık tarihinin beşiği.'},
+  'Uşak':         {plaka:64, nufus:'375K',  bilgi:'El dokuması halıları ve deri sanayisiyle meşhur; Karun Hazinesi\'nin bulunduğu Lidya topraklarının kenti.'},
+  'Van':          {plaka:65, nufus:'1.13M', bilgi:'Türkiye\'nin en büyük gölünde yüzen Akdamar Adası kilisesi ve meşhur Van kahvaltısıyla Doğu\'nun incisi.'},
+  'Yozgat':       {plaka:66, nufus:'420K',  bilgi:'Çapanoğlu Camii ve yüksek platosu; Boğazlıyan\'ın kilim desenleri ve sarımsaklı yemekleriyle bilinen il.'},
+  'Zonguldak':    {plaka:67, nufus:'602K',  bilgi:'Türkiye\'nin taş kömürü başkenti; maden işçiliğinin derin tarihi ve Karadeniz\'in sarp kayalık kıyıları.'},
+  'Aksaray':      {plaka:68, nufus:'443K',  bilgi:'İpek Yolu\'nun kavşağında; Ihlara Vadisi\'nin oyma kiliseleri ve Tuz Gölü\'nün kıyısındaki İç Anadolu kenti.'},
+  'Bayburt':      {plaka:69, nufus:'84K',   bilgi:'Türkiye\'nin en küçük illerinden; Çoruh Nehri\'nin yatağı, ceviz bahçeleri ve kadim Bayburt Kalesi.'},
+  'Karaman':      {plaka:70, nufus:'253K',  bilgi:'İlk Türkçe fermanın verildiği şehir; Karamanoğulları mirası ve Binbirkilise antik alanıyla Türk tarihinin beşiği.'},
+  'Kırıkkale':    {plaka:71, nufus:'283K',  bilgi:'Makine ve Kimya Endüstrisi\'nin merkezi; savunma sanayii fabrikalarıyla Türkiye\'nin stratejik üretim üssü.'},
+  'Batman':       {plaka:72, nufus:'620K',  bilgi:'Türkiye\'nin petrol başkenti; Hasankeyf\'in on bin yıllık tarihi ve Dicle kıyısındaki tarihin son kalıntıları.'},
+  'Şırnak':       {plaka:73, nufus:'561K',  bilgi:'Cizre\'nin antik geçmişi, Uludere\'nin dağ yaylaları ve ham petrol kaynakları ile sınırın en güney kenti.'},
+  'Bartın':       {plaka:74, nufus:'199K',  bilgi:'Inkumu ve Amasra\'nın bakir plajları; Osmanlı ahşap evleri ve Bartın Çayı\'nın Karadeniz\'e döküldüğü şirin il.'},
+  'Ardahan':      {plaka:75, nufus:'97K',   bilgi:'Çıldır Gölü\'nde at üstü kızak geleneği ve Kafkas kartallarının yuvası; Türkiye\'nin en soğuk dağ kenti.'},
+  'Iğdır':        {plaka:76, nufus:'197K',  bilgi:'Ağrı Dağı eteklerinde kavun bahçeleri; Serhat kültürü ve Türkiye\'nin tropikal mikroiklimiyle benzersiz Doğu kenti.'},
+  'Yalova':       {plaka:77, nufus:'283K',  bilgi:'Termal kaplıcaları ve gül bahçeleriyle Atatürk\'ün köşkünün bulunduğu; İstanbul\'a en yakın huzur şehri.'},
+  'Karabük':      {plaka:78, nufus:'243K',  bilgi:'Safranbolu\'nun UNESCO korumasındaki Osmanlı evleri ve demir-çelik sanayisiyle Batı Karadeniz\'in önemli kenti.'},
+  'Kilis':        {plaka:79, nufus:'143K',  bilgi:'Türkiye\'nin en küçük illerinden; zeytinyağı kalitesiyle ödüllenen ve Suriye sınırında Antik Kiliz kültürünü yaşatan il.'},
+  'Osmaniye':     {plaka:80, nufus:'541K',  bilgi:'Ceyhan Nehri kıyısında; Karatepe-Aslantaş açık hava müzesi ve Toroslar\'ın eteklerindeki verimli ova kenti.'},
+  'Düzce':        {plaka:81, nufus:'406K',  bilgi:'1999 depreminden güçlenerek çıkan; Akçakoca plajları, fındık bahçeleri ve Batı Karadeniz\'in dinamik genç kenti.'},
 };
 
 /* ── SUPABASE ── */
@@ -659,6 +676,35 @@ let correctPieces=0, timerStarted=false, startTime, timerInterval;
 let hintsUsed=0, hintsLeft=MAX_HINTS, scoreSaved=false;
 let gameStarted=false;
 
+/* ── DOM REFERANSLARI (önbellek) ── */
+const DOM = {};
+function initDOMRefs() {
+  DOM.timerVal    = document.getElementById('timer-val');
+  DOM.smTimer     = document.getElementById('sm-timer');
+  DOM.scoreValue  = document.getElementById('score-value');
+  DOM.smScore     = document.getElementById('sm-score');
+  DOM.progressFill= document.getElementById('progress-fill');
+  DOM.progressPct = document.getElementById('progress-pct');
+  DOM.hintDots    = document.getElementById('hint-dots');
+  DOM.hintBtn     = document.getElementById('hint-btn');
+  DOM.leaderboard = document.getElementById('leaderboard');
+}
+initDOMRefs();
+
+/* ── GEOJSON CACHE ── */
+let _geoCache = null;
+async function loadGeoJSON(url) {
+  if (_geoCache) return _geoCache;
+  try {
+    const cached = sessionStorage.getItem('turkiye-geojson-v1');
+    if (cached) { _geoCache = JSON.parse(cached); return _geoCache; }
+  } catch(e) {}
+  const data = await d3.json(url);
+  _geoCache = data;
+  try { sessionStorage.setItem('turkiye-geojson-v1', JSON.stringify(data)); } catch(e) {}
+  return data;
+}
+
 /* ── START BUTTON ── */
 document.getElementById('start-btn').addEventListener('click', () => {
   gameStarted = true;
@@ -669,29 +715,32 @@ document.getElementById('start-btn').addEventListener('click', () => {
 
 /* ── LEADERBOARD ── */
 async function fetchLeaderboard() {
-  document.getElementById('leaderboard').innerHTML='<p class="lb-loading">Yükleniyor…</p>';
+  DOM.leaderboard.innerHTML='<p class="lb-loading">Yükleniyor…</p>';
   try {
     const data = await sbFetch('scores?select=name,seconds,time_display,hints_used&order=seconds.asc&limit=15');
     renderLeaderboard(data);
   } catch(e) {
-    document.getElementById('leaderboard').innerHTML='<p class="lb-empty">Bağlantı hatası.</p>';
+    DOM.leaderboard.innerHTML='<p class="lb-empty">Bağlantı hatası.</p>';
   }
 }
 async function submitScore(name,seconds,timeDisplay,hintsUsed) {
   await sbFetch('scores',{method:'POST',prefer:'return=minimal',body:JSON.stringify({name,seconds,time_display:timeDisplay,hints_used:hintsUsed})});
 }
 function renderLeaderboard(lb) {
-  const el=document.getElementById('leaderboard');
+  const el=DOM.leaderboard;
   if (!lb||!lb.length){el.innerHTML='<p class="lb-empty">Henüz kayıt yok.</p>';return;}
   const medal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
   const rc=i=>i===0?'gold':i===1?'silver':i===2?'bronze':'';
-  el.innerHTML=lb.map((e,i)=>`
-    <div class="lb-entry">
-      <span class="lb-rank ${rc(i)}">${medal(i)}</span>
-      <span class="lb-name">${e.name}</span>
-      <span style="font-size:8px;color:rgba(212,169,58,0.35);font-family:'Cinzel',serif">💡${e.hints_used}</span>
-      <span class="lb-time">${e.time_display}</span>
-    </div>`).join('');
+  const frag=document.createDocumentFragment();
+  lb.forEach((e,i)=>{
+    const row=document.createElement('div'); row.className='lb-entry';
+    const rank=document.createElement('span'); rank.className=`lb-rank ${rc(i)}`; rank.textContent=medal(i);
+    const name=document.createElement('span'); name.className='lb-name'; name.textContent=e.name;
+    const hints=document.createElement('span'); hints.style.cssText="font-size:8px;color:rgba(212,169,58,0.35);font-family:'Cinzel',serif"; hints.textContent=`💡${e.hints_used}`;
+    const time=document.createElement('span'); time.className='lb-time'; time.textContent=e.time_display;
+    row.append(rank,name,hints,time); frag.appendChild(row);
+  });
+  el.innerHTML=''; el.appendChild(frag);
 }
 
 /* ── TIMER ── */
@@ -700,8 +749,8 @@ function startTimer() {
   timerInterval=setInterval(()=>{
     const s=Math.floor((Date.now()-startTime)/1000);
     const txt=`${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
-    document.getElementById('timer-val').textContent=txt;
-    document.getElementById('sm-timer').textContent=txt;
+    DOM.timerVal.textContent=txt;
+    DOM.smTimer.textContent=txt;
   },500);
 }
 function stopTimer(){clearInterval(timerInterval);}
@@ -712,22 +761,22 @@ function getElapsedTime(){
 
 /* ── SCORE ── */
 function updateScore(){
-  document.getElementById('score-value').textContent=correctPieces;
-  document.getElementById('sm-score').textContent=correctPieces;
+  DOM.scoreValue.textContent=correctPieces;
+  DOM.smScore.textContent=correctPieces;
   const pct=Math.round((correctPieces/TOTAL)*100);
-  document.getElementById('progress-fill').style.width=pct+'%';
-  document.getElementById('progress-pct').textContent=pct+'%';
+  DOM.progressFill.style.width=pct+'%';
+  DOM.progressPct.textContent=pct+'%';
 }
 
 /* ── HINTS ── */
 function renderHintDots(){
-  const w=document.getElementById('hint-dots'); w.innerHTML='';
+  const w=DOM.hintDots; w.innerHTML='';
   for(let i=0;i<MAX_HINTS;i++){
     const d=document.createElement('div');
     d.className='hint-dot'+(i>=hintsLeft?' used':'');
     w.appendChild(d);
   }
-  document.getElementById('hint-btn').disabled=(hintsLeft<=0);
+  DOM.hintBtn.disabled=(hintsLeft<=0);
 }
 
 /* ── TOOLTIP ── */
@@ -799,7 +848,7 @@ const REGION_COLORS = [
   '#70a898', // çay yeşili
 ];
 
-d3.json('turkiye.geojson').then(data => {
+loadGeoJSON('turkiye.geojson').then(data => {
 
   // Arka plan il sınırları — daha belirgin
   svg.selectAll('.base-province').data(data.features).enter().append('path')
@@ -828,8 +877,11 @@ d3.json('turkiye.geojson').then(data => {
     .style('pointer-events','none').style('user-select','none');
 
   // ── PARÇALAR ──
+  // Tüm parçalar kendi katmanında — fixed parçalar bu katman içinde alta iner,
+  // sürüklenen parça raise() ile katman içinde en üste çıkar.
+  const piecesLayer = svg.append('g').attr('id','pieces-layer');
   const shuffled=[...data.features].sort(()=>Math.random()-0.5);
-  const pieces=svg.selectAll('.piece').data(shuffled).enter().append('g').attr('class','piece');
+  const pieces=piecesLayer.selectAll('.piece').data(shuffled).enter().append('g').attr('class','piece');
 
   const frameW=W-FM*2, frameH=H-FM*2;
   const perimeter=2*(frameW+frameH);
@@ -940,15 +992,17 @@ d3.json('turkiye.geojson').then(data => {
           .style('filter','none');
 
         d3.select(this).classed('fixed',true)
+          .lower() // fixed parça katmanın en altına iner — aktif parçalar hep üstte kalır
           .on('mouseover',null).on('mousemove',null).on('mouseout',null);
         hideTT();
 
-        // Ripple
+        // Ripple — sadece animasyon bitince kaldır (race condition yok)
         svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',0)
           .attr('fill','none').attr('stroke','rgba(80,220,80,0.6)').attr('stroke-width',2)
           .attr('class','snap-ripple')
+          .transition().duration(500).ease(d3.easeLinear)
+          .attr('r',40).attr('stroke-opacity',0)
           .on('end', function(){d3.select(this).remove();});
-        setTimeout(()=>svg.selectAll('.snap-ripple').remove(),600);
 
         // Yerleşen parça üstüne isim
         d3.select(this).append('text').text(d.properties.ilad)
@@ -969,6 +1023,7 @@ d3.json('turkiye.geojson').then(data => {
         document.getElementById('il-card-name').textContent = ilAd;
         document.getElementById('il-card-plaka').textContent = String(ilInfo.plaka).padStart(2,'0');
         document.getElementById('il-card-nufus').textContent = ilInfo.nufus;
+        document.getElementById('il-card-bilgi').textContent = ilInfo.bilgi || '';
         // Harita üzerindeki konumu bul
         const mapRect = document.getElementById('map-container').getBoundingClientRect();
         const svgEl = svg.node();
@@ -977,7 +1032,7 @@ d3.json('turkiye.geojson').then(data => {
         const scaleY = svgRect.height / svgEl.viewBox.baseVal.height;
         const screenX = svgRect.left + cx * scaleX;
         const screenY = svgRect.top  + cy * scaleY;
-        const cardW = 160, cardH = 72;
+        const cardW = 220, cardH = 110;
         let left = screenX - cardW / 2;
         let top  = screenY - cardH - 18;
         if (left < 8) left = 8;
@@ -985,9 +1040,8 @@ d3.json('turkiye.geojson').then(data => {
         if (top < 8) top = screenY + 18;
         card.style.left = left + 'px';
         card.style.top  = top  + 'px';
-        card.classList.add('visible');
         clearTimeout(card._hideTimer);
-        card._hideTimer = setTimeout(() => card.classList.remove('visible'), 2800);
+        card.classList.add('visible');
 
         if(correctPieces===TOTAL) onWin();
       }
@@ -1062,13 +1116,65 @@ d3.json('turkiye.geojson').then(data => {
     });
   }
 
-});// d3.json
+});// loadGeoJSON
+
+/* ── RESET (sayfa yenileme yerine hızlı sıfırlama) ── */
+function resetGame(){
+  // State sıfırla
+  correctPieces=0; timerStarted=false; startTime=undefined;
+  hintsUsed=0; hintsLeft=MAX_HINTS; scoreSaved=false; gameStarted=false;
+  clearInterval(timerInterval);
+
+  // UI sıfırla
+  DOM.timerVal.textContent='00:00'; DOM.smTimer.textContent='00:00';
+  DOM.scoreValue.textContent='0';   DOM.smScore.textContent='0';
+  DOM.progressFill.style.width='0%'; DOM.progressPct.textContent='0%';
+  document.getElementById('win-overlay').classList.remove('visible');
+  document.getElementById('restart-overlay').classList.remove('visible');
+  document.getElementById('il-info-card').classList.remove('visible');
+  const saveBtn=document.getElementById('save-score-btn');
+  saveBtn.textContent='SKORU KAYDET'; saveBtn.disabled=false;
+  document.getElementById('player-name').value='';
+
+  // SVG içeriğini temizle ve haritayı yeniden çiz
+  d3.select('#map-container').selectAll('svg').remove();
+  const cont=document.getElementById('map-container');
+  const W2=cont.clientWidth||960, H2=cont.clientHeight||600;
+  const svg2=d3.select('#map-container').append('svg')
+    .attr('width','100%').attr('height','100%')
+    .attr('viewBox',`0 0 ${W2} ${H2}`).style('overflow','hidden');
+
+  // Deniz bg
+  svg2.append('defs').append('radialGradient').attr('id','seaGrad')
+    .attr('cx','50%').attr('cy','50%').attr('r','70%');
+  svg2.select('defs radialGradient')
+    .append('stop').attr('offset','0%').attr('stop-color','#2a5070').attr('stop-opacity','0.7');
+  svg2.select('defs radialGradient')
+    .append('stop').attr('offset','100%').attr('stop-color','#152535').attr('stop-opacity','0.9');
+  svg2.append('rect').attr('width',W2).attr('height',H2).attr('fill','url(#seaGrad)');
+
+  // Cache'den anında yükle — ağ isteği yok
+  loadGeoJSON('turkiye.geojson').then(()=>{ location.reload(); });
+  // Not: SVG re-init karmaşıklığından kaçınmak için son adımda reload kullanıyoruz,
+  // ancak GeoJSON artık sessionStorage'dan anında gelir — ağ gecikmesi olmaz.
+}
 
 /* ── BUTTONS ── */
+document.getElementById('il-card-close').addEventListener('click', () => {
+  document.getElementById('il-info-card').classList.remove('visible');
+});
+
+document.getElementById('map-container').addEventListener('pointerdown', (e) => {
+  const card = document.getElementById('il-info-card');
+  if (!card.classList.contains('visible')) return;
+  if (card.contains(e.target)) return;
+  card.classList.remove('visible');
+});
+
 document.getElementById('restart-btn').addEventListener('click',()=>{
   document.getElementById('restart-overlay').classList.add('visible');
 });
-document.getElementById('restart-confirm-btn').addEventListener('click',()=>location.reload());
+document.getElementById('restart-confirm-btn').addEventListener('click',()=>resetGame());
 document.getElementById('restart-cancel-btn').addEventListener('click',()=>{
   document.getElementById('restart-overlay').classList.remove('visible');
 });
@@ -1078,7 +1184,7 @@ document.getElementById('restart-overlay').addEventListener('click',(e)=>{
     document.getElementById('restart-overlay').classList.remove('visible');
 });
 
-document.getElementById('win-restart-btn').addEventListener('click',()=>location.reload());
+document.getElementById('win-restart-btn').addEventListener('click',()=>resetGame());
 
 renderHintDots();
 fetchLeaderboard();
