@@ -4,9 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Şehir Şehir Türkiye</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <style>
     :root {
       --bg:         #0d1a10;
@@ -160,6 +162,15 @@
     .lb-loading { font-style:italic; color:var(--cream-mute); font-size:12px; text-align:center; padding:8px 0; animation:pulse 1.5s ease-in-out infinite; }
     .lb-empty   { font-style:italic; color:var(--cream-mute); font-size:12px; text-align:center; padding:8px 0; }
     @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+    .province-label {
+      paint-order: stroke fill;
+      stroke: rgba(12,6,0,0.9);
+      stroke-width: 2.5px;
+      stroke-linejoin: round;
+      fill: #f0d878;
+      pointer-events: none;
+      user-select: none;
+    }
 
     /* ── MAP ── */
     .map-wrapper {
@@ -694,7 +705,7 @@ initDOMRefs();
 /* ── GEOJSON CACHE ── */
 let _geoCache = null;
 async function loadGeoJSON(url) {
-  if (_geoCache) return _geoCache;
+  if (_geoCache) return _geoCache;           // in-memory: sıfır maliyet
   try {
     const cached = sessionStorage.getItem('turkiye-geojson-v1');
     if (cached) { _geoCache = JSON.parse(cached); return _geoCache; }
@@ -710,7 +721,7 @@ document.getElementById('start-btn').addEventListener('click', () => {
   gameStarted = true;
   const overlay = document.getElementById('start-overlay');
   overlay.classList.add('hidden');
-  setTimeout(() => overlay.remove(), 500);
+  // remove() yerine hidden bırak — resetGame sonrası tekrar kullanılabilir
 });
 
 /* ── LEADERBOARD ── */
@@ -744,16 +755,23 @@ function renderLeaderboard(lb) {
 }
 
 /* ── TIMER ── */
+const isMobile = () => window.innerWidth <= 700;
 function startTimer() {
   startTime=Date.now();
   timerInterval=setInterval(()=>{
     const s=Math.floor((Date.now()-startTime)/1000);
     const txt=`${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
-    DOM.timerVal.textContent=txt;
-    DOM.smTimer.textContent=txt;
-  },500);
+    if(isMobile()){ DOM.smTimer.textContent=txt; }
+    else          { DOM.timerVal.textContent=txt; }
+  },1000); // 500ms → 1000ms: saniye hassasiyeti yeterli, yarı kadar DOM yazımı
 }
-function stopTimer(){clearInterval(timerInterval);}
+function stopTimer(){
+  clearInterval(timerInterval);
+  // Kazanma anında her iki göstergeyi de güncelle
+  const s=Math.floor((Date.now()-startTime)/1000);
+  const txt=`${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
+  DOM.timerVal.textContent=txt; DOM.smTimer.textContent=txt;
+}
 function getElapsedTime(){
   const s=Math.floor((Date.now()-startTime)/1000);
   return{display:`${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`,seconds:s};
@@ -786,104 +804,94 @@ function moveTT(e){tooltip.style.left=(e.clientX+14)+'px';tooltip.style.top=(e.c
 function hideTT(){tooltip.style.opacity='0';}
 
 /* ── MAP SETUP ── */
-const container=document.getElementById('map-container');
-const W=container.clientWidth||960, H=container.clientHeight||600;
-
-const svg=d3.select('#map-container').append('svg')
-  .attr('width','100%').attr('height','100%')
-  .attr('viewBox',`0 0 ${W} ${H}`).style('overflow','hidden');
-
-// Deniz arka planı — daha canlı mavi
-svg.append('defs').append('radialGradient').attr('id','seaGrad')
-  .attr('cx','50%').attr('cy','50%').attr('r','70%');
-svg.select('defs radialGradient')
-  .append('stop').attr('offset','0%').attr('stop-color','#2a5070').attr('stop-opacity','0.7');
-svg.select('defs radialGradient')
-  .append('stop').attr('offset','100%').attr('stop-color','#152535').attr('stop-opacity','0.9');
-svg.append('rect').attr('width',W).attr('height',H).attr('fill','url(#seaGrad)');
-
 const FM=8;
-// İnce çerçeve
-svg.append('rect').attr('x',FM).attr('y',FM)
-  .attr('width',W-FM*2).attr('height',H-FM*2)
-  .attr('fill','none').attr('stroke','rgba(184,134,11,0.4)').attr('stroke-width',1.5).attr('rx',5);
-
-const projection=d3.geoMercator().center([35,39]).scale(W*2.5).translate([W/2,H/2]);
-const path=d3.geoPath().projection(projection);
-
-const defs=svg.select('defs');
-
-// Drop shadow filtresi
-const fShadow=defs.append('filter').attr('id','shadow');
-fShadow.append('feDropShadow').attr('dx','0').attr('dy','2').attr('stdDeviation','3').attr('flood-color','rgba(0,0,0,0.5)').attr('flood-opacity','1');
-
-// Hover glow
-const fGlow=defs.append('filter').attr('id','hoverGlow');
-fGlow.append('feDropShadow').attr('dx','0').attr('dy','0').attr('stdDeviation','5').attr('flood-color','#d4a93a').attr('flood-opacity','0.7');
-
-// Yerleştirilen parça gradient — yeşil (objectBoundingBox: her parçada aynı görünür)
-const placedGrad=defs.append('linearGradient').attr('id','placedGrad')
-  .attr('gradientUnits','objectBoundingBox')
-  .attr('x1','0').attr('y1','0').attr('x2','0').attr('y2','1');
-placedGrad.append('stop').attr('offset','0%').attr('stop-color','#6dcc6d');
-placedGrad.append('stop').attr('offset','100%').attr('stop-color','#2e8b2e');
 
 // Bölge renk paleti — her il için hafif farklı ton
 const REGION_COLORS = [
-  '#d4956a', // turuncu-kahve
-  '#c8a840', // altın sarı
-  '#7aab7a', // yumuşak yeşil
-  '#6a9eba', // mavi-gri
-  '#c47a5a', // bakır
-  '#b8c460', // sarı-yeşil
-  '#d4845a', // terra cotta
-  '#88b4c8', // açık mavi
-  '#c8a040', // amber
-  '#a8785a', // kızıl kahve
-  '#80b890', // adaçayı yeşili
-  '#d49060', // şeftali
-  '#7090c0', // slate mavi
-  '#c8b450', // altın koyu
-  '#b87080', // gülkurusu
-  '#70a898', // çay yeşili
+  '#d4956a','#c8a840','#7aab7a','#6a9eba','#c47a5a','#b8c460',
+  '#d4845a','#88b4c8','#c8a040','#a8785a','#80b890','#d49060',
+  '#7090c0','#c8b450','#b87080','#70a898',
 ];
 
-loadGeoJSON('turkiye.geojson').then(data => {
+// Tüm oyun state ve SVG değişkenleri — initGame() her çağrıda yeniden atanır
+let svg, path, pieces, frameW, frameH;
 
-  // Arka plan il sınırları — daha belirgin
+function buildSVG() {
+  d3.select('#map-container').selectAll('svg').remove();
+  const cont = document.getElementById('map-container');
+  const W = cont.clientWidth||960, H = cont.clientHeight||600;
+
+  svg = d3.select('#map-container').append('svg')
+    .attr('width','100%').attr('height','100%')
+    .attr('viewBox',`0 0 ${W} ${H}`).style('overflow','hidden');
+
+  const defs = svg.append('defs');
+
+  defs.append('radialGradient').attr('id','seaGrad')
+    .attr('cx','50%').attr('cy','50%').attr('r','70%')
+    .call(g=>{
+      g.append('stop').attr('offset','0%').attr('stop-color','#2a5070').attr('stop-opacity','0.7');
+      g.append('stop').attr('offset','100%').attr('stop-color','#152535').attr('stop-opacity','0.9');
+    });
+
+  svg.append('rect').attr('width',W).attr('height',H).attr('fill','url(#seaGrad)');
+  svg.append('rect').attr('x',FM).attr('y',FM)
+    .attr('width',W-FM*2).attr('height',H-FM*2)
+    .attr('fill','none').attr('stroke','rgba(184,134,11,0.4)').attr('stroke-width',1.5).attr('rx',5);
+
+  defs.append('filter').attr('id','shadow')
+    .append('feDropShadow').attr('dx','0').attr('dy','2').attr('stdDeviation','3')
+    .attr('flood-color','rgba(0,0,0,0.5)').attr('flood-opacity','1');
+
+  defs.append('filter').attr('id','hoverGlow')
+    .append('feDropShadow').attr('dx','0').attr('dy','0').attr('stdDeviation','5')
+    .attr('flood-color','#d4a93a').attr('flood-opacity','0.7');
+
+  defs.append('linearGradient').attr('id','placedGrad')
+    .attr('gradientUnits','objectBoundingBox')
+    .attr('x1','0').attr('y1','0').attr('x2','0').attr('y2','1')
+    .call(g=>{
+      g.append('stop').attr('offset','0%').attr('stop-color','#6dcc6d');
+      g.append('stop').attr('offset','100%').attr('stop-color','#2e8b2e');
+    });
+
+  const projection = d3.geoMercator().center([35,39]).scale(W*2.5).translate([W/2,H/2]);
+  path = d3.geoPath().projection(projection);
+  frameW = W-FM*2; frameH = H-FM*2;
+
+  // touch listeners
+  svg.node().addEventListener('touchstart',e=>{
+    if(e.target.closest&&e.target.closest('g.piece:not(.fixed)')) e.preventDefault();
+  },{passive:false});
+  svg.node().addEventListener('touchmove',e=>{
+    if(e.target.closest&&e.target.closest('g.piece:not(.fixed)')) e.preventDefault();
+  },{passive:false});
+
+  return {W, H};
+}
+
+function initGame(data) {
+  const {W, H} = buildSVG();
+
+  // Arka plan il sınırları
   svg.selectAll('.base-province').data(data.features).enter().append('path')
     .attr('class','base-province').attr('d',path)
     .attr('fill','rgba(200,175,120,0.18)')
     .attr('stroke','rgba(184,134,11,0.35)').attr('stroke-width',1.5);
 
-  // Şehir isimleri — çift katmanlı halo
-  svg.selectAll('.province-label-halo').data(data.features).enter().append('text')
-    .attr('class', d=>`province-label-halo lbl-${d.properties.ilad.replace(/\s/g,'_')}`)
-    .attr('x',d=>path.centroid(d)[0]).attr('y',d=>path.centroid(d)[1])
-    .text(d=>d.properties.ilad)
-    .attr('text-anchor','middle').attr('dominant-baseline','middle')
-    .attr('font-size','8.5px').attr('font-family','Cinzel, serif').attr('font-weight','400')
-    .attr('fill','none')
-    .attr('stroke','rgba(12,6,0,0.9)').attr('stroke-width','2.5px').attr('stroke-linejoin','round')
-    .style('pointer-events','none').style('user-select','none');
-
+  // Şehir isimleri — tek katman, paint-order ile halo efekti
   svg.selectAll('.province-label').data(data.features).enter().append('text')
     .attr('class', d=>`province-label lbl-${d.properties.ilad.replace(/\s/g,'_')}`)
     .attr('x',d=>path.centroid(d)[0]).attr('y',d=>path.centroid(d)[1])
     .text(d=>d.properties.ilad)
     .attr('text-anchor','middle').attr('dominant-baseline','middle')
-    .attr('font-size','8.5px').attr('font-family','Cinzel, serif').attr('font-weight','400')
-    .attr('fill','#f0d878')
-    .style('pointer-events','none').style('user-select','none');
+    .attr('font-size','8.5px').attr('font-family','Cinzel, serif').attr('font-weight','400');
 
   // ── PARÇALAR ──
-  // Tüm parçalar kendi katmanında — fixed parçalar bu katman içinde alta iner,
-  // sürüklenen parça raise() ile katman içinde en üste çıkar.
   const piecesLayer = svg.append('g').attr('id','pieces-layer');
   const shuffled=[...data.features].sort(()=>Math.random()-0.5);
-  const pieces=piecesLayer.selectAll('.piece').data(shuffled).enter().append('g').attr('class','piece');
+  pieces=piecesLayer.selectAll('.piece').data(shuffled).enter().append('g').attr('class','piece');
 
-  const frameW=W-FM*2, frameH=H-FM*2;
   const perimeter=2*(frameW+frameH);
   const step=perimeter/shuffled.length;
   const border=38;
@@ -896,7 +904,6 @@ loadGeoJSON('turkiye.geojson').then(data => {
     else                              {x=FM+border;                      y=FM+frameH-(dist-2*frameW-frameH);}
 
     const centroid=path.centroid(d);
-    // Her parçaya hafif farklı renk tonu
     const col=REGION_COLORS[i % REGION_COLORS.length];
 
     d3.select(this)
@@ -912,6 +919,11 @@ loadGeoJSON('turkiye.geojson').then(data => {
   });
 
   // ── HOVER & DRAG ──
+  const pieceBBoxCache = new Map();
+  pieces.each(function(d){
+    pieceBBoxCache.set(d, d3.select(this).select('path').node().getBBox());
+  });
+
   function evtCoords(event){
     const src=event.sourceEvent;
     if(!src) return{x:event.x,y:event.y};
@@ -919,15 +931,16 @@ loadGeoJSON('turkiye.geojson').then(data => {
     if(src.changedTouches&&src.changedTouches.length) return{x:src.changedTouches[0].clientX,y:src.changedTouches[0].clientY};
     return{x:src.clientX,y:src.clientY};
   }
-  function svgPoint(cx,cy){
+
+  let offsetX,offsetY,_cachedCTMInv=null;
+  function getSVGPoint(cx,cy){
     const el=svg.node(), pt=el.createSVGPoint();
     pt.x=cx; pt.y=cy;
-    const ctm=el.getScreenCTM(); if(!ctm) return{x:cx,y:cy};
-    const tp=pt.matrixTransform(ctm.inverse());
+    if(!_cachedCTMInv){ const ctm=el.getScreenCTM(); if(!ctm)return{x:cx,y:cy}; _cachedCTMInv=ctm.inverse(); }
+    const tp=pt.matrixTransform(_cachedCTMInv);
     return{x:tp.x,y:tp.y};
   }
-
-  let offsetX,offsetY;
+  window.addEventListener('resize',()=>{ _cachedCTMInv=null; },{passive:true});
 
   pieces
     .on('mouseover',function(event,d){
@@ -955,17 +968,18 @@ loadGeoJSON('turkiye.geojson').then(data => {
       if(d3.select(this).classed('fixed')) return;
       if(!gameStarted) return;
       hideTT();
-      const c=evtCoords(event), sc=svgPoint(c.x,c.y);
+      _cachedCTMInv=null;
+      const c=evtCoords(event), sc=getSVGPoint(c.x,c.y);
       const t=d3.select(this).attr('transform').match(/translate\(([^,]+),([^)]+)\)/);
       offsetX=sc.x-parseFloat(t[1]); offsetY=sc.y-parseFloat(t[2]);
       d3.select(this).raise().classed('active',true).select('path').style('cursor','grabbing');
     })
-    .on('drag',function(event){
+    .on('drag',function(event,d){
       if(d3.select(this).classed('fixed')) return;
       if(!timerStarted){startTimer();timerStarted=true;}
-      const c=evtCoords(event), sc=svgPoint(c.x,c.y);
+      const c=evtCoords(event), sc=getSVGPoint(c.x,c.y);
       let nx=sc.x-offsetX, ny=sc.y-offsetY;
-      const bb=d3.select(this).select('path').node().getBBox();
+      const bb=pieceBBoxCache.get(d);
       nx=Math.max(FM+bb.width/2, Math.min(FM+frameW-bb.width/2, nx));
       ny=Math.max(FM+bb.height/2,Math.min(FM+frameH-bb.height/2,ny));
       d3.select(this).attr('transform',`translate(${nx},${ny})`);
@@ -977,14 +991,12 @@ loadGeoJSON('turkiye.geojson').then(data => {
       const dist=Math.hypot(cx-parseFloat(t[1]),cy-parseFloat(t[2]));
 
       if(dist<=SNAP_DIST){
-        // Snap animasyonu
         d3.select(this).interrupt()
           .transition().duration(250).ease(d3.easeCubicOut)
           .attr('transform',`translate(${cx},${cy}) scale(1.07)`)
           .transition().duration(160)
           .attr('transform',`translate(${cx},${cy}) scale(1)`);
 
-        // Parça düz yeşil — gradient yerine flat renk, her parçada aynı görünür
         d3.select(this).select('path').interrupt()
           .attr('fill','#4caf50')
           .attr('stroke','rgba(100,220,100,0.7)')
@@ -992,11 +1004,10 @@ loadGeoJSON('turkiye.geojson').then(data => {
           .style('filter','none');
 
         d3.select(this).classed('fixed',true)
-          .lower() // fixed parça katmanın en altına iner — aktif parçalar hep üstte kalır
+          .lower()
           .on('mouseover',null).on('mousemove',null).on('mouseout',null);
         hideTT();
 
-        // Ripple — sadece animasyon bitince kaldır (race condition yok)
         svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',0)
           .attr('fill','none').attr('stroke','rgba(80,220,80,0.6)').attr('stroke-width',2)
           .attr('class','snap-ripple')
@@ -1004,7 +1015,6 @@ loadGeoJSON('turkiye.geojson').then(data => {
           .attr('r',40).attr('stroke-opacity',0)
           .on('end', function(){d3.select(this).remove();});
 
-        // Yerleşen parça üstüne isim
         d3.select(this).append('text').text(d.properties.ilad)
           .attr('font-size','8.5px').attr('font-family','Cinzel, serif')
           .attr('fill','#fff8e0').attr('font-weight','600')
@@ -1016,7 +1026,6 @@ loadGeoJSON('turkiye.geojson').then(data => {
         svg.selectAll(`.lbl-${d.properties.ilad.replace(/\s/g,'_')}`).remove();
         correctPieces++; updateScore();
 
-        // İl bilgi kartını göster
         const ilAd = d.properties.ilad;
         const ilInfo = IL_DATA[ilAd] || {plaka:'?', nufus:'?'};
         const card = document.getElementById('il-info-card');
@@ -1024,8 +1033,6 @@ loadGeoJSON('turkiye.geojson').then(data => {
         document.getElementById('il-card-plaka').textContent = String(ilInfo.plaka).padStart(2,'0');
         document.getElementById('il-card-nufus').textContent = ilInfo.nufus;
         document.getElementById('il-card-bilgi').textContent = ilInfo.bilgi || '';
-        // Harita üzerindeki konumu bul
-        const mapRect = document.getElementById('map-container').getBoundingClientRect();
         const svgEl = svg.node();
         const svgRect = svgEl.getBoundingClientRect();
         const scaleX = svgRect.width / svgEl.viewBox.baseVal.width;
@@ -1049,21 +1056,15 @@ loadGeoJSON('turkiye.geojson').then(data => {
     });
 
   pieces.call(drag);
-
-  svg.node().addEventListener('touchstart',e=>{
-    if(e.target.closest && e.target.closest('g.piece:not(.fixed)')) e.preventDefault();
-  },{passive:false});
-  svg.node().addEventListener('touchmove',e=>{
-    if(e.target.closest && e.target.closest('g.piece:not(.fixed)')) e.preventDefault();
-  },{passive:false});
-
   updateScore();
 
   // ── HINT ──
-  let worstPieceData;
+  // Event listener'ı her initGame çağrısında yeniden bağla (öncekini temizle)
+  const hintBtn = document.getElementById('hint-btn');
+  hintBtn.replaceWith(hintBtn.cloneNode(true)); // eski listener'ları temizle
   document.getElementById('hint-btn').addEventListener('click',()=>{
     if(hintsLeft<=0) return;
-    let worstPiece=null, worstDist=-1;
+    let worstPiece=null, worstDist=-1, worstPieceData;
     pieces.each(function(d){
       if(d3.select(this).classed('fixed')) return;
       const [cx,cy]=path.centroid(d);
@@ -1103,22 +1104,30 @@ loadGeoJSON('turkiye.geojson').then(data => {
     },220);
     setTimeout(()=>clearInterval(burst),4500);
 
-    document.getElementById('save-score-btn').addEventListener('click',async()=>{
+    // save-score-btn: önceki listener'ı temizle
+    const saveBtn=document.getElementById('save-score-btn');
+    const freshSaveBtn=saveBtn.cloneNode(true);
+    saveBtn.replaceWith(freshSaveBtn);
+    freshSaveBtn.addEventListener('click',async()=>{
       if(scoreSaved) return;
-      const btn=document.getElementById('save-score-btn');
       const name=document.getElementById('player-name').value.trim()||'Anonim';
-      btn.textContent='⏳ KAYDEDİLİYOR…'; btn.disabled=true;
+      freshSaveBtn.textContent='⏳ KAYDEDİLİYOR…'; freshSaveBtn.disabled=true;
       try{
         await submitScore(name,elapsed.seconds,elapsed.display,hintsUsed);
-        scoreSaved=true; btn.textContent='✓ KAYDEDİLDİ';
+        scoreSaved=true; freshSaveBtn.textContent='✓ KAYDEDİLDİ';
         await fetchLeaderboard();
-      }catch(e){btn.textContent='✗ HATA'; btn.disabled=false;}
+      }catch(e){freshSaveBtn.textContent='✗ HATA'; freshSaveBtn.disabled=false;}
     });
   }
 
-});// loadGeoJSON
+} // initGame()
 
-/* ── RESET (sayfa yenileme yerine hızlı sıfırlama) ── */
+/* ── BOOTSTRAP ── */
+loadGeoJSON('turkiye.geojson').then(data => {
+  initGame(data);
+});
+
+/* ── RESET — sayfa yenileme YOK, initGame() ile anında sıfırla ── */
 function resetGame(){
   // State sıfırla
   correctPieces=0; timerStarted=false; startTime=undefined;
@@ -1135,28 +1144,13 @@ function resetGame(){
   const saveBtn=document.getElementById('save-score-btn');
   saveBtn.textContent='SKORU KAYDET'; saveBtn.disabled=false;
   document.getElementById('player-name').value='';
+  // Start overlay'i yeniden göster
+  const startOverlay = document.getElementById('start-overlay');
+  if (startOverlay) startOverlay.classList.remove('hidden');
+  renderHintDots();
 
-  // SVG içeriğini temizle ve haritayı yeniden çiz
-  d3.select('#map-container').selectAll('svg').remove();
-  const cont=document.getElementById('map-container');
-  const W2=cont.clientWidth||960, H2=cont.clientHeight||600;
-  const svg2=d3.select('#map-container').append('svg')
-    .attr('width','100%').attr('height','100%')
-    .attr('viewBox',`0 0 ${W2} ${H2}`).style('overflow','hidden');
-
-  // Deniz bg
-  svg2.append('defs').append('radialGradient').attr('id','seaGrad')
-    .attr('cx','50%').attr('cy','50%').attr('r','70%');
-  svg2.select('defs radialGradient')
-    .append('stop').attr('offset','0%').attr('stop-color','#2a5070').attr('stop-opacity','0.7');
-  svg2.select('defs radialGradient')
-    .append('stop').attr('offset','100%').attr('stop-color','#152535').attr('stop-opacity','0.9');
-  svg2.append('rect').attr('width',W2).attr('height',H2).attr('fill','url(#seaGrad)');
-
-  // Cache'den anında yükle — ağ isteği yok
-  loadGeoJSON('turkiye.geojson').then(()=>{ location.reload(); });
-  // Not: SVG re-init karmaşıklığından kaçınmak için son adımda reload kullanıyoruz,
-  // ancak GeoJSON artık sessionStorage'dan anında gelir — ağ gecikmesi olmaz.
+  // GeoJSON zaten önbellekte — ağ isteği yok, anında çalışır
+  loadGeoJSON('turkiye.geojson').then(data => initGame(data));
 }
 
 /* ── BUTTONS ── */
